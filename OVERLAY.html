@@ -567,7 +567,6 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
         <li><b>Texto</b> — texto simples. Dê duplo-clique depois para editar em tempo real.</li>
         <li><b>YouTube</b> — cole um link (aceita minutagem, ex: <code>?t=135</code>).</li>
         <li><b>Áudio</b> — vira uma barra com play, progresso e volume. O Host toca o som na live.</li>
-        <li><b>Link</b> — incorpora um site dentro da tela.</li>
         <li><b>HTML</b> — cola código HTML que roda em um painel. Apenas uma instância por vez.</li>
         <li><b>Pincel / Borracha</b> — desenho livre sobre a tela.</li>
         <li><b>Programar</b> — cria presets de cena acionados por teclas 1-0 (veja abaixo).</li>
@@ -688,9 +687,6 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <button class="tool-btn" data-tool="audio" id="tool-audio"><span class="tt">Áudio</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     </button>
-    <button class="tool-btn" data-tool="link" id="tool-link"><span class="tt">Link</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
-    </button>
     <button class="tool-btn" data-tool="html" id="tool-html"><span class="tt">HTML</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l1.5 17L12 22l6.5-2L20 3z"/><path d="M8 8h8l-.3 3.5H8.5M8.3 11.5l.3 3.5 3.4 1 3.4-1 .2-2.5"/></svg>
     </button>
@@ -797,13 +793,6 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <div class="range-val" id="eraser-size-val">28px</div>
     <div class="fy-hint">Apaga traços do pincel.</div>
   </div>
-  <div class="flyout" id="flyout-link">
-    <h4>Link <button class="fy-close" data-close>Fechar</button></h4>
-    <label class="field-label">Endereço</label>
-    <input type="text" class="fy-input" id="link-url" placeholder="https://...">
-    <button class="fy-btn" id="btn-add-link">Adicionar</button>
-    <div class="fy-hint">Carrega dentro da tela para todos.</div>
-  </div>
   <div class="flyout" id="flyout-html" style="width:320px;">
     <h4>HTML <button class="fy-close" data-close>Fechar</button></h4>
     <label class="field-label">Código</label>
@@ -897,12 +886,6 @@ const Utils = (() => {
     let h = 0; for(let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
     return `hsl(${Math.abs(h) % 360}, 72%, 62%)`;
   }
-  function normalizeUrl(s){
-    if(typeof s !== 'string') return null;
-    s = s.trim(); if(!s) return null;
-    if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) s = 'https://' + s;
-    try{ new URL(s); return s; }catch(e){ return null; }
-  }
   function fmtTime(sec){
     if(!isFinite(sec) || sec < 0) sec = 0;
     const m = Math.floor(sec / 60);
@@ -917,7 +900,7 @@ const Utils = (() => {
     }catch(e){}
   }
   return { uid, randomRoomCode, clamp, throttle, escapeAttr, extractYouTubeInfo,
-           isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, normalizeUrl, fmtTime, tryPlay };
+           isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay };
 })();
 
 /* ---------- State ---------- */
@@ -1585,13 +1568,8 @@ const Elements = (() => {
       const iframe = frame.querySelector('iframe');
       if(iframe && iframe.dataset.srcSet !== '1'){
         iframe.dataset.srcSet = '1';
-        if(el.content.kind === 'html'){
-          iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-modals');
-          iframe.srcdoc = el.content.html || '';
-        } else {
-          iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-presentation');
-          iframe.src = el.content.url || 'about:blank';
-        }
+        iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-modals');
+        iframe.srcdoc = el.content.html || '';
       }
     }
   }
@@ -3013,7 +2991,6 @@ const UI = (() => {
     audio: document.getElementById('flyout-audio'),
     brush: document.getElementById('flyout-brush'),
     eraser: document.getElementById('flyout-eraser'),
-    link: document.getElementById('flyout-link'),
     html: document.getElementById('flyout-html'),
   };
   function closeAllFlyouts(){ Object.values(flyouts).forEach(f => f.classList.remove('open')); }
@@ -3128,14 +3105,6 @@ const UI = (() => {
     if(!info.videoId){ toastMsg('Link inválido'); return; }
     Actions.createElement('youtube', { videoId: info.videoId, start: info.start, loop: false, variants: {} }, { w: 0.32, ar: 0.5625 });
     document.getElementById('yt-url').value = '';
-    closeAllFlyouts();
-  });
-
-  document.getElementById('btn-add-link').addEventListener('click', () => {
-    const url = Utils.normalizeUrl(document.getElementById('link-url').value);
-    if(!url){ toastMsg('Endereço inválido'); return; }
-    Actions.createElement('embed', { kind:'link', url }, { w: 0.36, ar: 0.62 });
-    document.getElementById('link-url').value = '';
     closeAllFlyouts();
   });
 
