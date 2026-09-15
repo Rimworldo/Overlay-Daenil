@@ -126,8 +126,23 @@ button{font-family:inherit;}
   display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;
   color:var(--accent);background:rgba(91,140,255,0.06);pointer-events:none;z-index:50;
 }
+#canvas-view{position:absolute;inset:0;transform-origin:0 0;}
+body.host-mode #canvas-view{transform:none !important;}
 #draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 #elements-layer{position:absolute;inset:0;width:100%;height:100%;}
+#stage-bounds{
+  position:absolute;inset:0;
+  border:1.5px dashed rgba(91,140,255,0.55);
+  pointer-events:none;z-index:40;
+}
+#stage-bounds::before{
+  content:'Área visível no Host/OBS';
+  position:absolute;top:-21px;left:-1.5px;
+  font-size:10.5px;font-weight:600;letter-spacing:.2px;
+  color:var(--accent);background:rgba(91,140,255,0.14);
+  padding:2px 8px;border-radius:6px;white-space:nowrap;
+}
+body.host-mode #stage-bounds{display:none !important;}
 
 .el{
   position:absolute;transform-origin:center center;touch-action:none;
@@ -592,6 +607,12 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     </div>
 
     <div class="tut-section">
+      <h4>Área visível do Host</h4>
+      <p>O quadro pontilhado no meio da tela mostra exatamente o que aparece no Host/OBS. Tudo que estiver <b>fora</b> dele fica só na sua tela — uma área de "bastidores" pra preparar elementos sem precisar excluí-los. Arraste um elemento pra fora do quadro pra escondê-lo do Host, e de volta pra dentro pra mostrá-lo.</p>
+      <p>Use o <b>scroll do mouse</b> para dar zoom in/out (com o cursor como centro) e arraste o fundo vazio da tela para navegar. Dê duplo-clique no fundo ou use o botão <b>Ajustar zoom</b> na toolbar para voltar à visão normal.</p>
+    </div>
+
+    <div class="tut-section">
       <h4>Hotkeys 1-0</h4>
       <p>Em imagens, GIFs, vídeos e YouTube, associe até 10 arquivos/links diferentes. Pressione a tecla correspondente para trocar. Pressionar a mesma tecla de novo oculta o elemento (toggle).</p>
     </div>
@@ -662,8 +683,11 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
   <div id="peer-badge" class="hidden"></div>
 
   <div id="stage">
-    <canvas id="draw-canvas"></canvas>
-    <div id="elements-layer"></div>
+    <div id="canvas-view">
+      <canvas id="draw-canvas"></canvas>
+      <div id="elements-layer"></div>
+      <div id="stage-bounds"></div>
+    </div>
   </div>
 
   <div id="host-hint" class="hidden">Aguardando convidados...</div>
@@ -699,6 +723,9 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     </button>
     <button class="tool-btn" data-tool="eraser" id="tool-eraser"><span class="tt">Borracha</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13l-7 7H7l-4-4a2 2 0 0 1 0-2.8l9-9a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8z"/><path d="M9 20h10"/></svg>
+    </button>
+    <button class="tool-btn" id="tool-fit"><span class="tt">Ajustar zoom</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="tool-programar"><span class="tt">Programar</span>
@@ -899,8 +926,14 @@ const Utils = (() => {
       if(p && p.catch) p.catch(() => { try{ m.muted = true; const p2 = m.play(); if(p2 && p2.catch) p2.catch(() => {}); }catch(e){} });
     }catch(e){}
   }
+  function toCanvasPoint(clientX, clientY, r){
+    return {
+      x: (clientX - r.left - State.view.x) / State.view.scale,
+      y: (clientY - r.top - State.view.y) / State.view.scale,
+    };
+  }
   return { uid, randomRoomCode, clamp, throttle, escapeAttr, extractYouTubeInfo,
-           isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay };
+           isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay, toCanvasPoint };
 })();
 
 /* ---------- State ---------- */
@@ -925,6 +958,7 @@ const State = {
   _programSessionStart: null,
   activePrograms: new Set(),
   mediaTickTimer: null,
+  view: { x: 0, y: 0, scale: 1 },
 };
 State.myColor = Utils.colorForUser(State.myUserId);
 
@@ -1608,9 +1642,10 @@ const Elements = (() => {
       node.classList.add('dragging');
       try{ node.setPointerCapture(e.pointerId); }catch(err){}
       const r = document.getElementById('stage').getBoundingClientRect();
+      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
       const cx = el.x * r.width, cy = el.y * r.height;
-      dOX = (e.clientX - r.left) - cx;
-      dOY = (e.clientY - r.top) - cy;
+      dOX = cp.x - cx;
+      dOY = cp.y - cy;
     }
 
     node.addEventListener('pointerdown', (e) => {
@@ -1664,14 +1699,15 @@ const Elements = (() => {
     window.addEventListener('pointermove', (e) => {
       const el = State.elements.get(elId); if(!el) return;
       const r = document.getElementById('stage').getBoundingClientRect();
+      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
       if(dragging){
-        el.x = Utils.clamp(((e.clientX - r.left) - dOX) / r.width, -0.1, 1.1);
-        el.y = Utils.clamp(((e.clientY - r.top) - dOY) / r.height, -0.1, 1.1);
+        el.x = Utils.clamp((cp.x - dOX) / r.width, -1, 2);
+        el.y = Utils.clamp((cp.y - dOY) / r.height, -1, 2);
         positionNode(node, el);
         thrMove(elId);
       } else if(resizing){
         const cx = el.x * r.width, cy = el.y * r.height;
-        const dx = (e.clientX - r.left) - cx, dy = (e.clientY - r.top) - cy;
+        const dx = cp.x - cx, dy = cp.y - cy;
         if(e.shiftKey){
           const wPx = Math.max(24, Math.abs(dx) * 2);
           const hPx = Math.max(14, Math.abs(dy) * 2);
@@ -1686,7 +1722,7 @@ const Elements = (() => {
         positionNode(node, el); updateNodeContent(node, el); thrUpd(elId);
       } else if(rotating){
         const cx = el.x * r.width, cy = el.y * r.height;
-        const angle = Math.atan2((e.clientY - r.top) - cy, (e.clientX - r.left) - cx) * 180 / Math.PI;
+        const angle = Math.atan2(cp.y - cy, cp.x - cx) * 180 / Math.PI;
         el.rot = Math.round(angle + 90);
         positionNode(node, el); thrUpd(elId);
       }
@@ -1703,8 +1739,9 @@ const Elements = (() => {
       const el = State.elements.get(elId); if(!el) return;
       resizing = true; rsW = el.w; rsAr = el.ar;
       const r = document.getElementById('stage').getBoundingClientRect();
+      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
       const cx = el.x * r.width, cy = el.y * r.height;
-      const dx = (e.clientX - r.left) - cx, dy = (e.clientY - r.top) - cy;
+      const dx = cp.x - cx, dy = cp.y - cy;
       rsDist = Math.max(8, Math.sqrt(dx*dx + dy*dy));
       try{ handle.setPointerCapture(e.pointerId); }catch(err){}
     });
@@ -1835,7 +1872,7 @@ const Drawing = (() => {
 
 /* ---------- RemoteCursors (dedup, smooth, click) ---------- */
 const RemoteCursors = (() => {
-  const stage = document.getElementById('stage');
+  const cursorLayer = document.getElementById('canvas-view');
   const nodes = new Map();
 
   function cursorSVG(color){
@@ -1865,7 +1902,7 @@ const RemoteCursors = (() => {
       node.innerHTML = cursorSVG(color || '#5b8cff') +
         `<div class="cursor-label" style="background:${Utils.escapeAttr(color || '#5b8cff')}">${Utils.escapeAttr(name || 'convidado')}</div>` +
         '<div class="click-ripple" style="color:' + Utils.escapeAttr(color || '#5b8cff') + '"></div>';
-      stage.appendChild(node);
+      cursorLayer.appendChild(node);
       nodes.set(userId, node);
     } else {
       const label = node.querySelector('.cursor-label');
@@ -2779,6 +2816,7 @@ const UI = (() => {
     enterApp();
     Drawing.resizeCanvas();
     Elements.repositionAll();
+    resetView();
   }
 
   function resetToGate(){
@@ -2797,6 +2835,7 @@ const UI = (() => {
     State.programMode = false; State.editingProgram = null;
     State._programSessionStart = null;
     State.programs = {};
+    resetView();
     RemoteCursors.clearAll();
     Elements.domNodes.forEach(n => n.remove()); Elements.domNodes.clear();
     Drawing.clearAll();
@@ -3141,12 +3180,30 @@ const UI = (() => {
   ess.addEventListener('input', () => { State.drawing.eraserSize = parseInt(ess.value, 10); esv.textContent = ess.value + 'px'; });
 
   const stage = document.getElementById('stage');
+  const canvasView = document.getElementById('canvas-view');
+
+  function applyView(){
+    canvasView.style.transform = `translate(${State.view.x}px, ${State.view.y}px) scale(${State.view.scale})`;
+  }
+  function resetView(){
+    // Enquadra a área visível (0-1) no terço central da tela, revelando a
+    // margem de bastidores (-1 a 2) ao redor para deixar o recurso visível.
+    const r = stage.getBoundingClientRect();
+    const scale = 1 / 3;
+    State.view.scale = scale;
+    State.view.x = r.width * scale;
+    State.view.y = r.height * scale;
+    applyView();
+  }
+
+  let panState = null;
 
   stage.addEventListener('pointerdown', (e) => {
     if(State.role === 'host') return;
     const r = stage.getBoundingClientRect();
-    const nx = (e.clientX - r.left) / r.width;
-    const ny = (e.clientY - r.top) / r.height;
+    const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
+    const nx = cp.x / r.width;
+    const ny = cp.y / r.height;
 
     // Click animation para o cursor virtual
     if(State.showMouseActive) Net.send({ type: Net.MSG.CURSOR_CLICK, userId: State.myUserId });
@@ -3158,12 +3215,9 @@ const UI = (() => {
       const c = Drawing.eraseAt(nx, ny, State.drawing.eraserSize);
       if(c){ Net.send({ type: Net.MSG.ERASE_POINT, x: nx, y: ny, radius: State.drawing.eraserSize }); Drawing.scheduleSync(); }
       try{ stage.setPointerCapture(e.pointerId); }catch(err){}
-    } else {
-      if(e.target === stage){
-        document.querySelectorAll('.el.selected').forEach(n => n.classList.remove('selected'));
-        State.selectedElId = null;
-        Popup.hide();
-      }
+    } else if(!e.target.closest('.el')){
+      panState = { startX: e.clientX, startY: e.clientY, viewX: State.view.x, viewY: State.view.y, moved: false };
+      try{ stage.setPointerCapture(e.pointerId); }catch(err){}
     }
   });
 
@@ -3174,8 +3228,20 @@ const UI = (() => {
   stage.addEventListener('pointermove', (e) => {
     if(State.role === 'host') return;
     const r = stage.getBoundingClientRect();
-    const nx = Utils.clamp((e.clientX - r.left) / r.width, 0, 1);
-    const ny = Utils.clamp((e.clientY - r.top) / r.height, 0, 1);
+
+    if(panState){
+      const dx = e.clientX - panState.startX, dy = e.clientY - panState.startY;
+      if(!panState.moved && Math.hypot(dx, dy) > 4) panState.moved = true;
+      if(panState.moved){
+        State.view.x = panState.viewX + dx;
+        State.view.y = panState.viewY + dy;
+        applyView();
+      }
+    }
+
+    const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
+    const nx = cp.x / r.width;
+    const ny = cp.y / r.height;
     if(State.activeTool === 'brush' && State.drawing.active && e.buttons === 1){
       Drawing.addLocalPoint(nx, ny);
     } else if(State.activeTool === 'eraser' && State.drawing.active && e.buttons === 1){
@@ -3187,10 +3253,42 @@ const UI = (() => {
 
   stage.addEventListener('pointerup', () => {
     if(State.activeTool === 'brush' && State.drawing.active) Drawing.endLocalStroke();
+    if(panState){
+      if(!panState.moved){
+        document.querySelectorAll('.el.selected').forEach(n => n.classList.remove('selected'));
+        State.selectedElId = null;
+        Popup.hide();
+      }
+      panState = null;
+    }
   });
   stage.addEventListener('pointerleave', () => {
     if(State.showMouseActive) Net.send({ type: Net.MSG.CURSOR_HIDE, userId: State.myUserId });
   });
+
+  stage.addEventListener('wheel', (e) => {
+    if(State.role === 'host') return;
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    const oldScale = State.view.scale;
+    const factor = Math.exp(-e.deltaY * 0.0016);
+    const newScale = Utils.clamp(oldScale * factor, 0.25, 3);
+    const canvasX = (mx - State.view.x) / oldScale;
+    const canvasY = (my - State.view.y) / oldScale;
+    State.view.x = mx - canvasX * newScale;
+    State.view.y = my - canvasY * newScale;
+    State.view.scale = newScale;
+    applyView();
+  }, { passive: false });
+
+  stage.addEventListener('dblclick', (e) => {
+    if(State.role === 'host') return;
+    if(e.target.closest('.el')) return;
+    resetView();
+  });
+
+  document.getElementById('tool-fit').addEventListener('click', resetView);
 
   let dragDepth = 0;
   stage.addEventListener('dragenter', (e) => {
@@ -3203,14 +3301,15 @@ const UI = (() => {
     e.preventDefault(); dragDepth = 0; stage.classList.remove('drop-hint');
     if(State.role === 'host') return;
     const r = stage.getBoundingClientRect();
-    const bx = Utils.clamp((e.clientX - r.left) / r.width, 0.03, 0.97);
-    const by = Utils.clamp((e.clientY - r.top) / r.height, 0.03, 0.97);
+    const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
+    const bx = Utils.clamp(cp.x / r.width, -1, 2);
+    const by = Utils.clamp(cp.y / r.height, -1, 2);
     const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
     if(!files.length) return;
     const hi = files.findIndex(f => /\.html?$/i.test(f.name) || f.type === 'text/html');
     if(hi >= 0){ const hf = files.splice(hi, 1)[0]; await Actions.addHtmlFromFile(hf, { x: bx, y: by }); }
     for(let i = 0; i < files.length; i++){
-      const pos = { x: Utils.clamp(bx + i * 0.03, 0.02, 0.98), y: Utils.clamp(by + i * 0.04, 0.02, 0.98) };
+      const pos = { x: Utils.clamp(bx + i * 0.03, -1, 2), y: Utils.clamp(by + i * 0.04, -1, 2) };
       await Actions.addFileByType(files[i], pos);
     }
   });
