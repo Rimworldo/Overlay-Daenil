@@ -43,8 +43,7 @@ body.host-mode #live-btn,
 body.host-mode #peer-badge,
 body.host-mode #program-banner,
 body.host-mode #programar-modal,
-body.host-mode #tutorial-modal,
-body.host-mode #toolbar{display:none !important;}
+body.host-mode #tutorial-modal{display:none !important;}
 body.host-mode #elements-layer{pointer-events:none !important;}
 body.host-mode .el, body.host-mode .el *{pointer-events:none !important;}
 body.host-mode .el[data-hidden="1"] > .el-frame{opacity:0 !important;}
@@ -175,6 +174,13 @@ body.host-mode #stage-bounds{display:none !important;}
 }
 .el-text[contenteditable="true"]{pointer-events:auto;outline:1.5px dashed var(--accent);outline-offset:2px;background:rgba(0,0,0,0.3);border-radius:6px;}
 @keyframes textPulse{0%{transform:scale(1.025);}100%{transform:scale(1);}}
+/* Sem animações em modo programação */
+body.program-mode .el,
+body.program-mode .el *{
+  transition: none !important;
+  animation: none !important;
+}
+body.program-mode .el-text{animation:none !important;}
 
 .el-yt{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;}
 .el-yt iframe{width:100%;height:100%;border:0;pointer-events:none;}
@@ -1048,10 +1054,11 @@ const Net = (() => {
   function broadcastAll(msg){ broadcast(msg, null); }
   function sendToHost(msg){ if(State.hostConn && State.hostConn.open) State.hostConn.send(msg); }
 
+  // Em modo programação, NÃO sincronizamos criação/remoção/clear.
+  // Movimentos/updates locais de ghosts ainda funcionam localmente.
   function send(msg){
     if(State.programMode && msg && msg.type && (
-      msg.type === MSG.EL_CREATE || msg.type === MSG.EL_UPDATE ||
-      msg.type === MSG.EL_MOVE || msg.type === MSG.EL_REMOVE || msg.type === MSG.CLEAR_ALL
+      msg.type === MSG.EL_CREATE || msg.type === MSG.EL_REMOVE || msg.type === MSG.CLEAR_ALL
     )) return;
     if(State.role === 'host') handleMessageAsHost(msg, State.myUserId, null);
     else sendToHost(msg);
@@ -1252,6 +1259,7 @@ const Elements = (() => {
     t.programKey = s.programKey || null;
     t.v = s.v || 0;
     t.userId = s.userId; t.userName = s.userName; t.userColor = s.userColor;
+    t.createdAt = s.createdAt || Date.now();
     t.content = Object.assign({}, t.content, s.content);
   }
   function localAdd(elObj, opts){
@@ -1262,8 +1270,7 @@ const Elements = (() => {
       return existing;
     }
     const fresh = Object.assign({}, elObj, { content: Object.assign({}, elObj.content) });
-    // Se em program mode e não é ghost explícito, marca como ghost
-    if(State.programMode && !fresh.ghost && opts && opts.silent !== true){
+    if(State.programMode && !fresh.ghost && (!opts || opts.silent !== true)){
       fresh.ghost = true;
     }
     State.elements.set(fresh.id, fresh);
@@ -1403,7 +1410,6 @@ const Elements = (() => {
       }
     } else if(el.type === 'audio'){
       if(State.role === 'host'){
-        // Host: apenas audio oculto
         const audio = document.createElement('audio');
         audio.style.display = 'none';
         audio.preload = 'metadata';
@@ -1445,12 +1451,10 @@ const Elements = (() => {
         vol.addEventListener('pointerdown', (e) => e.stopPropagation());
         vol.addEventListener('input', (e) => {
           e.stopPropagation();
-          // Volume local — só afeta o próprio cliente
           if(el._audioEl) el._audioEl.volume = parseInt(e.target.value, 10) / 100;
         });
         bar.appendChild(btn); bar.appendChild(info); bar.appendChild(prog); bar.appendChild(time); bar.appendChild(vol);
         frame.appendChild(bar);
-        // Audio element oculto para tocar localmente
         const audio = document.createElement('audio');
         audio.style.display = 'none';
         audio.preload = 'metadata';
@@ -1513,7 +1517,14 @@ const Elements = (() => {
       if(el._lastText !== newText){
         el._lastText = newText;
         if(isEmpty) txt.style.opacity = '0';
-        else { txt.style.opacity = '1'; txt.style.animation = 'none'; void txt.offsetWidth; txt.style.animation = 'textPulse .2s ease'; }
+        else {
+          txt.style.opacity = '1';
+          if(!State.programMode){
+            txt.style.animation = 'none';
+            void txt.offsetWidth;
+            txt.style.animation = 'textPulse .2s ease';
+          }
+        }
       }
     } else if(el.type === 'youtube'){
       const iframe = frame.querySelector('iframe');
@@ -1560,20 +1571,11 @@ const Elements = (() => {
         MediaCtl.register(el.id, audio, { btn: null });
         audio.addEventListener('play', () => MediaCtl.paint(el.id));
         audio.addEventListener('pause', () => MediaCtl.paint(el.id));
-        audio.addEventListener('timeupdate', () => {
-          if(State.role === 'host'){
-            const node2 = domNodes.get(el.id);
-            if(node2){ const f = node2.querySelector('.eab-progress > i'); if(f && audio.duration) f.style.width = Math.min(100, (audio.currentTime/audio.duration)*100)+'%'; }
-          }
-        });
         audio.addEventListener('ended', () => {
           const cur = State.elements.get(el.id);
           if(cur){
             cur.content.playing = false;
             Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: false } } });
-            if(!cur.content.loop){
-              // Apenas para o áudio mesmo — mantém o elemento
-            }
           }
         });
       } else if(audio && audio.dataset.srcSet === '1'){
@@ -1584,7 +1586,6 @@ const Elements = (() => {
         if(sq) sq.innerHTML = (el.content && el.content.playing) ? ICONS.pause : ICONS.play;
         const nm = frame.querySelector('.eab-name');
         if(nm && el.content && el.content.name) nm.textContent = el.content.name;
-        // Atualiza progresso local a partir do elemento de áudio
         if(audio && !audio._bound){
           audio._bound = true;
           const fill = frame.querySelector('.eab-progress > i');
@@ -1870,7 +1871,7 @@ const Drawing = (() => {
   return { resizeCanvas, startLocalStroke, addLocalPoint, endLocalStroke, receiveStrokePoint, eraseAt, clearAll, getSnapshot, loadSnapshot, scheduleSync };
 })();
 
-/* ---------- RemoteCursors (dedup, smooth, click) ---------- */
+/* ---------- RemoteCursors ---------- */
 const RemoteCursors = (() => {
   const cursorLayer = document.getElementById('canvas-view');
   const nodes = new Map();
@@ -1882,9 +1883,7 @@ const RemoteCursors = (() => {
   function cleanupStray(userId){
     const wanted = nodes.get(userId);
     document.querySelectorAll('.remote-cursor').forEach(n => {
-      if(n.dataset.userId === userId && n !== wanted){
-        n.remove();
-      }
+      if(n.dataset.userId === userId && n !== wanted){ n.remove(); }
     });
   }
 
@@ -1926,7 +1925,6 @@ const RemoteCursors = (() => {
   }
 
   function hide(userId){
-    // Remove TODOS os cursores deste usuário
     document.querySelectorAll('.remote-cursor').forEach(n => {
       if(n.dataset.userId === userId) n.remove();
     });
@@ -2088,7 +2086,6 @@ const Programar = (() => {
   }
 
   function enterEdit(key){
-    // Marca sessão: guarda os IDs atuais
     State._programSessionStart = new Set(State.elements.keys());
     State.programMode = true;
     State.editingProgram = key;
@@ -2096,14 +2093,12 @@ const Programar = (() => {
     banner.classList.remove('hidden');
     progKeyEl.textContent = key;
 
-    // Spawn ghost preview do que já está salvo
     const prog = State.programs[key] || [];
     prog.forEach(g => {
       const clone = JSON.parse(JSON.stringify(g));
       clone.ghost = true;
       clone.id = Utils.uid('ghost');
       clone.v = 0;
-      // Não registra em _programSessionStart
       Elements.localAdd(clone, {silent:true});
     });
     UI.toast('Modo Programar: adicione elementos para o slot ' + key);
@@ -2118,12 +2113,10 @@ const Programar = (() => {
       banner.classList.add('hidden');
       return;
     }
-    // Elementos que NÃO estavam no início = parte do programa
     const start = State._programSessionStart || new Set();
     const newIds = [];
     const ghosts = [];
     State.elements.forEach(el => {
-      // Se é ghost (inclui os que já existiam como ghost) OU se foi criado nesta sessão
       const isGhost = !!el.ghost;
       const isNew = !start.has(el.id);
       if(isGhost || isNew){
@@ -2138,7 +2131,6 @@ const Programar = (() => {
       }
     });
     State.programs[key] = ghosts;
-    // Remove todos os elementos do modo programa
     newIds.forEach(id => {
       State.removed.delete(id);
       Elements.localRemove(id, {silent:true});
@@ -2170,6 +2162,7 @@ const Programar = (() => {
       clone.userId = State.myUserId;
       clone.userName = State.myName;
       clone.userColor = State.myColor;
+      clone.createdAt = Date.now();
       Elements.localAdd(clone);
       Net.send({ type: Net.MSG.EL_CREATE, element: clone });
     });
@@ -2227,7 +2220,7 @@ function triggerHotkey(key){
         const node = Elements.domNodes.get(el.id);
         if(node){
           const iframe = node.querySelector('iframe');
-          if(iframe){ iframe.dataset.loaded = ''; YouTubeSync.destroy(el.id); }
+          if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; YouTubeSync.destroy(el.id); }
         }
       }
       if(el.type === 'video' && State.role === 'host'){
@@ -2255,7 +2248,8 @@ function buildFullStateSnapshot(){
       rot: el.rot, opacity: el.opacity, hidden: !!el.hidden,
       programKey: el.programKey || null,
       content: el.content, v: el.v,
-      userId: el.userId, userName: el.userName, userColor: el.userColor
+      userId: el.userId, userName: el.userName, userColor: el.userColor,
+      createdAt: el.createdAt
     })),
     strokes: Drawing.getSnapshot(),
     version: State.version,
@@ -2478,6 +2472,7 @@ const Popup = (() => {
       Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { opacity: op } });
       Elements.renderElement(el);
     });
+    opSlider.addEventListener('pointerdown', (e) => e.stopPropagation());
     opRow.appendChild(opSlider); opRow.appendChild(opVal);
     bodyEl.appendChild(opRow);
 
@@ -2543,7 +2538,7 @@ const Popup = (() => {
           const node = Elements.domNodes.get(el.id);
           if(node){
             const iframe = node.querySelector('iframe');
-            if(iframe){ iframe.dataset.loaded = ''; YouTubeSync.destroy(el.id); }
+            if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; YouTubeSync.destroy(el.id); }
           }
         }
         Elements.renderElement(el);
@@ -2553,7 +2548,7 @@ const Popup = (() => {
 
     bodyEl.appendChild(ctrl);
 
-    // Posição + Volume (para mídia)
+    // Posição + Volume
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const posRow = document.createElement('div');
       posRow.className = 'ep-row';
@@ -2564,7 +2559,6 @@ const Popup = (() => {
       posRow.appendChild(posSlider); posRow.appendChild(posTime);
       bodyEl.appendChild(posRow);
 
-      // Atualiza valores
       posSlider.addEventListener('input', (ev) => {
         ev.stopPropagation();
         const ratio = parseInt(posSlider.value, 10) / 1000;
@@ -2680,6 +2674,7 @@ const Popup = (() => {
         Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { fontSize: el.content.fontSize } } });
         Elements.renderElement(el);
       });
+      ss.addEventListener('pointerdown', (e) => e.stopPropagation());
       sizeRow.appendChild(ss); sizeRow.appendChild(sv);
       bodyEl.appendChild(sizeRow);
 
@@ -3186,10 +3181,8 @@ const UI = (() => {
     canvasView.style.transform = `translate(${State.view.x}px, ${State.view.y}px) scale(${State.view.scale})`;
   }
   function resetView(){
-    // Enquadra a área visível (0-1) no terço central da tela, revelando a
-    // margem de bastidores (-1 a 2) ao redor para deixar o recurso visível.
     const r = stage.getBoundingClientRect();
-    const scale = 1 / 3;
+    const scale = Math.max(0.34, Math.min(0.5, 1 / 2.6));
     State.view.scale = scale;
     State.view.x = r.width * scale;
     State.view.y = r.height * scale;
@@ -3205,7 +3198,6 @@ const UI = (() => {
     const nx = cp.x / r.width;
     const ny = cp.y / r.height;
 
-    // Click animation para o cursor virtual
     if(State.showMouseActive) Net.send({ type: Net.MSG.CURSOR_CLICK, userId: State.myUserId });
 
     if(State.activeTool === 'brush' && State.drawing.active){
