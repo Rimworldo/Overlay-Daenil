@@ -49,7 +49,9 @@ body.host-mode #live-btn,
 body.host-mode #peer-badge,
 body.host-mode #program-banner,
 body.host-mode #programar-modal,
-body.host-mode #tutorial-modal{display:none !important;}
+body.host-mode #tutorial-modal,
+body.host-mode #placement-hint,
+body.host-mode #live-embed{display:none !important;}
 body.host-mode #elements-layer{pointer-events:none !important;}
 body.host-mode .el, body.host-mode .el *{pointer-events:none !important;}
 body.host-mode .el[data-hidden="1"] > .el-frame{opacity:0 !important;}
@@ -94,10 +96,6 @@ button{font-family:inherit;}
 #app.active{display:block;}
 #app-bg{position:absolute;inset:0;}
 
-#live-embed{position:fixed;inset:0;background:#000;display:none;z-index:10;}
-#live-embed.active{display:block;}
-#live-embed iframe{width:100%;height:100%;border:0;display:block;}
-
 #live-btn{
   position:fixed;top:10px;left:12px;z-index:700;
   display:flex;align-items:center;gap:6px;
@@ -135,11 +133,24 @@ button{font-family:inherit;}
 body.host-mode #canvas-view{transform:none !important;}
 #draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 #elements-layer{position:absolute;inset:0;width:100%;height:100%;}
+
+/* Live embed: posicionada por JS sobre o retângulo visível (16:9),
+   dentro do canvas-view (zoom/pan acompanham). Fica abaixo dos elementos. */
+#live-embed{
+  position:absolute;
+  display:none;
+  background:#000;
+  overflow:hidden;
+  border-radius:2px;
+}
+#live-embed.active{display:block;}
+#live-embed iframe{width:100%;height:100%;border:0;display:block;}
+
 #stage-bounds{
   position:absolute;
-  border: none;
-  outline: 1.5px dashed rgba(82,133,194,0.5);
-  outline-offset: 0;
+  border:none;
+  outline:1.5px dashed rgba(82,133,194,0.5);
+  outline-offset:0;
   pointer-events:none;
   z-index:40;
 }
@@ -152,15 +163,34 @@ body.host-mode #canvas-view{transform:none !important;}
 }
 body.host-mode #stage-bounds{display:none !important;}
 
+/* ---------- Placement hint ---------- */
+#placement-hint{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);
+  background:var(--accent);color:#fff;
+  padding:9px 18px;border-radius:8px;
+  font-size:12.5px;font-weight:600;
+  box-shadow:0 10px 24px -10px rgba(0,0,0,0.6);
+  z-index:780;pointer-events:none;
+  display:flex;align-items:center;gap:10px;
+}
+#placement-hint b{font-weight:700;}
+#placement-hint .ph-esc{
+  background:rgba(0,0,0,0.22);
+  padding:2px 8px;border-radius:5px;
+  font-size:11px;font-weight:600;
+}
+body.placing{cursor:crosshair;}
+body.placing #stage{cursor:crosshair;}
+body.placing .el{cursor:crosshair;}
+
+/* ---------- Elementos ---------- */
 .el{
   position:absolute;transform-origin:center center;touch-action:none;
   will-change:transform;
-  transition: transform .14s linear, opacity .18s ease;
 }
-.el.dragging{transition: opacity .18s ease;}
 
 .el.selected > .el-frame{outline:1.5px solid var(--accent);outline-offset:3px;}
-.el-frame{position:relative;width:100%;height:100%;border-radius:6px;overflow:visible;transition: opacity .18s ease;}
+.el-frame{position:relative;width:100%;height:100%;border-radius:6px;overflow:visible;}
 
 .el-owner-tag{
   position:absolute;top:-20px;left:0;font-size:10px;font-weight:600;color:var(--text-dim);
@@ -175,20 +205,22 @@ body.host-mode #stage-bounds{display:none !important;}
   background:transparent;
 }
 .el[data-type="video"] .el-media{background:#000;}
+/* Modo esticado: imagem preenche a caixa (fisicamente esticada) */
+.el.stretched .el-media{object-fit:fill;border-radius:0;}
 
 .el-text{
-  width:100%;height:100%;display:flex;align-items:center;padding:6px 10px;
-  white-space:pre-wrap;word-break:break-word;overflow:hidden;line-height:1.25;
-  pointer-events:none;transition: opacity .25s ease;
+  width:100%;min-height:100%;display:flex;align-items:center;padding:6px 10px;
+  white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.3;
+  pointer-events:none;
+  box-sizing:border-box;
 }
 .el-text[contenteditable="true"]{pointer-events:auto;outline:1.5px dashed var(--accent);outline-offset:2px;background:rgba(0,0,0,0.3);border-radius:6px;}
-@keyframes textPulse{0%{transform:scale(1.02);}100%{transform:scale(1);}}
+
 body.program-mode .el,
 body.program-mode .el *{
   transition: none !important;
   animation: none !important;
 }
-body.program-mode .el-text{animation:none !important;}
 
 .el-yt{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;}
 .el-yt iframe{width:100%;height:100%;border:0;pointer-events:none;}
@@ -198,26 +230,18 @@ body.program-mode .el-text{animation:none !important;}
 
 .el-video-placeholder{
   width:100%;height:100%;border-radius:6px;
-  background:#14181d;
-  border:1px solid var(--line-2);
+  background:#14181d;border:1px solid var(--line-2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:5px;padding:10px;box-sizing:border-box;
   color:var(--text);overflow:hidden;position:relative;
 }
-.el-video-placeholder .evp-type{
-  font-size:9px;font-weight:700;letter-spacing:1.4px;
-  color:var(--accent);text-transform:uppercase;
-}
-.el-video-placeholder .evp-name{
-  font-size:12.5px;font-weight:600;color:var(--text);max-width:100%;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;
-}
+.el-video-placeholder .evp-type{font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;}
+.el-video-placeholder .evp-name{font-size:12.5px;font-weight:600;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
 .el-video-placeholder .evp-owner{font-size:10px;color:var(--text-dim);}
 .el-video-placeholder .evp-btns{display:flex;gap:6px;margin-top:5px;}
 .evp-btn{
   width:30px;height:30px;border-radius:50%;
-  border:1px solid var(--line-2);
-  background:var(--panel-3);
+  border:1px solid var(--line-2);background:var(--panel-3);
   color:var(--text);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
 }
@@ -225,19 +249,12 @@ body.program-mode .el-text{animation:none !important;}
 .evp-btn svg{width:13px;height:13px;}
 
 .el-audio-bar{
-  width:100%;height:100%;
-  display:flex;align-items:center;gap:8px;
-  padding:0 10px;box-sizing:border-box;
-  background:#14181d;
-  border:1px solid var(--line-2);
-  border-radius:8px;
+  width:100%;height:100%;display:flex;align-items:center;gap:8px;
+  padding:0 10px;box-sizing:border-box;background:#14181d;
+  border:1px solid var(--line-2);border-radius:8px;
   color:var(--text);overflow:hidden;
 }
-.el-audio-bar .eab-btn{
-  width:30px;height:30px;flex:none;border-radius:50%;border:none;cursor:pointer;
-  background:var(--accent);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-}
+.el-audio-bar .eab-btn{width:30px;height:30px;flex:none;border-radius:50%;border:none;cursor:pointer;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;}
 .el-audio-bar .eab-btn:hover{background:var(--accent-hover);}
 .el-audio-bar .eab-btn svg{width:13px;height:13px;}
 .el-audio-bar .eab-info{min-width:0;flex:0 1 auto;max-width:34%;}
@@ -246,10 +263,7 @@ body.program-mode .el-text{animation:none !important;}
 .el-audio-bar .eab-progress{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,0.12);overflow:hidden;cursor:pointer;position:relative;}
 .el-audio-bar .eab-progress > i{display:block;height:100%;width:0%;background:var(--accent);}
 .el-audio-bar .eab-time{font-size:10px;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:none;}
-.el-audio-bar .eab-vol{
-  -webkit-appearance:none;appearance:none;
-  width:60px;height:4px;border-radius:4px;background:rgba(255,255,255,0.12);outline:none;flex:none;
-}
+.el-audio-bar .eab-vol{-webkit-appearance:none;appearance:none;width:60px;height:4px;border-radius:4px;background:rgba(255,255,255,0.12);outline:none;flex:none;}
 .el-audio-bar .eab-vol::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer;}
 .el-audio-bar .eab-vol::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
 
@@ -262,44 +276,20 @@ body.program-mode .el-text{animation:none !important;}
 .mc-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
 .mc-btn svg{width:12px;height:12px;}
 
-.el-handle{
-  position:absolute;width:12px;height:12px;right:-6px;bottom:-6px;border-radius:50%;
-  background:var(--accent);border:2px solid #fff;cursor:nwse-resize;opacity:0;
-  transition:opacity .15s ease;pointer-events:auto;z-index:4;
-}
+.el-handle{position:absolute;width:12px;height:12px;right:-6px;bottom:-6px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:nwse-resize;opacity:0;transition:opacity .15s ease;pointer-events:auto;z-index:4;}
 .el.selected .el-handle{opacity:1;}
 
-.el-drag-handle{
-  position:absolute;width:12px;height:12px;left:-6px;bottom:-6px;border-radius:50%;
-  background:var(--ok);border:2px solid #fff;cursor:move;opacity:0;
-  transition:opacity .15s ease;pointer-events:auto;z-index:4;
-}
+.el-drag-handle{position:absolute;width:12px;height:12px;left:-6px;bottom:-6px;border-radius:50%;background:var(--ok);border:2px solid #fff;cursor:move;opacity:0;transition:opacity .15s ease;pointer-events:auto;z-index:4;}
 .el.selected .el-drag-handle{opacity:1;}
 
-.el-rotate-handle{
-  position:absolute;width:12px;height:12px;left:50%;top:-24px;margin-left:-6px;border-radius:50%;
-  background:var(--indigo);border:2px solid #fff;cursor:grab;opacity:0;
-  transition:opacity .15s ease;pointer-events:auto;z-index:4;
-}
+.el-rotate-handle{position:absolute;width:12px;height:12px;left:50%;top:-24px;margin-left:-6px;border-radius:50%;background:var(--indigo);border:2px solid #fff;cursor:grab;opacity:0;transition:opacity .15s ease;pointer-events:auto;z-index:4;}
 .el.selected .el-rotate-handle{opacity:1;}
 
-.el-del-handle{
-  position:absolute;width:16px;height:16px;right:-8px;top:-8px;border-radius:50%;
-  background:var(--err);border:2px solid #fff;cursor:pointer;opacity:0;
-  transition:opacity .15s ease;pointer-events:auto;z-index:4;display:flex;align-items:center;
-  justify-content:center;font-size:10px;color:#fff;line-height:1;font-weight:700;
-}
+.el-del-handle{position:absolute;width:16px;height:16px;right:-8px;top:-8px;border-radius:50%;background:var(--err);border:2px solid #fff;cursor:pointer;opacity:0;transition:opacity .15s ease;pointer-events:auto;z-index:4;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;line-height:1;font-weight:700;}
 .el.selected .el-del-handle{opacity:1;}
 
 .el.ghost > .el-frame{opacity:.45;outline:1.5px dashed var(--indigo);outline-offset:3px;border-radius:6px;}
-.el.ghost::after{
-  content:'PRESET';
-  position:absolute;top:-20px;right:0;
-  font-size:9px;font-weight:700;letter-spacing:1px;
-  color:var(--indigo);
-  background:rgba(13,17,23,0.9);
-  padding:2px 6px;border-radius:5px;pointer-events:none;
-}
+.el.ghost::after{content:'PRESET';position:absolute;top:-20px;right:0;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--indigo);background:rgba(13,17,23,0.9);padding:2px 6px;border-radius:5px;pointer-events:none;}
 body.program-mode .el:not(.ghost){opacity:.18;pointer-events:none;}
 
 .el[data-hidden="1"] > .el-frame{opacity:.4;}
@@ -307,100 +297,53 @@ body.host-mode .el[data-hidden="1"]{visibility:hidden;}
 
 .remote-cursor{
   position:absolute;top:0;left:0;width:20px;height:20px;pointer-events:none !important;
-  z-index:600;
-  transform:translate(-2px,-2px);
+  z-index:600;transform:translate(-2px,-2px);
   transition: transform .11s cubic-bezier(.2,.8,.25,1), opacity .3s ease;
   will-change:transform;
 }
 .remote-cursor *{pointer-events:none !important;}
 .remote-cursor svg{filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));display:block;}
-.remote-cursor .cursor-label{
-  position:absolute;left:18px;top:16px;font-size:10px;font-weight:600;
-  padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;
-}
-.remote-cursor .click-ripple{
-  position:absolute;left:-4px;top:-4px;width:28px;height:28px;border-radius:50%;
-  border:2px solid currentColor;opacity:0;pointer-events:none;
-}
-.remote-cursor.clicking .click-ripple{
-  animation:clickRipple .5s ease-out;
-}
-@keyframes clickRipple{
-  0%{ transform:scale(.2); opacity:.85; }
-  100%{ transform:scale(1.8); opacity:0; }
-}
+.remote-cursor .cursor-label{position:absolute;left:18px;top:16px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;}
+.remote-cursor .click-ripple{position:absolute;left:-4px;top:-4px;width:28px;height:28px;border-radius:50%;border:2px solid currentColor;opacity:0;pointer-events:none;}
+.remote-cursor.clicking .click-ripple{animation:clickRipple .5s ease-out;}
+@keyframes clickRipple{0%{ transform:scale(.2); opacity:.85; }100%{ transform:scale(1.8); opacity:0; }}
 
-#host-hint{
-  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
-  background:var(--panel);border:1px solid var(--line);
-  padding:9px 16px;border-radius:8px;
-  font-size:12px;color:var(--text-dim);text-align:center;z-index:400;
-}
+#host-hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:9px 16px;border-radius:8px;font-size:12px;color:var(--text-dim);text-align:center;z-index:400;}
 
 /* ================= TOOLBAR ================= */
 #toolbar{
   position:fixed;top:50%;left:12px;transform:translateY(-50%);z-index:700;
   display:flex;flex-direction:column;gap:2px;padding:7px 5px;
   background:var(--panel);border:1px solid var(--line-2);
-  border-radius:10px;
-  max-height:86vh;overflow-y:auto;overflow-x:hidden;
+  border-radius:10px;max-height:86vh;overflow-y:auto;overflow-x:hidden;
 }
-.tool-btn{
-  width:36px;height:36px;border-radius:6px;border:none;background:transparent;
-  color:var(--text-dim);display:flex;align-items:center;justify-content:center;
-  cursor:pointer;position:relative;
-  flex:none;
-}
+.tool-btn{width:36px;height:36px;border-radius:6px;border:none;background:transparent;color:var(--text-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex:none;}
 .tool-btn:hover{background:var(--panel-3);color:var(--text);}
 .tool-btn.active{background:var(--accent);color:#fff;}
 .tool-btn svg{width:17px;height:17px;}
 .tool-sep{height:1px;background:var(--line);margin:4px 5px;flex:none;}
-.tool-btn .tt{
-  position:absolute;left:46px;top:50%;transform:translateY(-50%);
-  background:#1a1e22;border:1px solid var(--line-2);color:var(--text);padding:5px 9px;
-  border-radius:5px;font-size:11.5px;white-space:nowrap;opacity:0;pointer-events:none;
-  transition:opacity .12s ease;z-index:10;
-}
+.tool-btn .tt{position:absolute;left:46px;top:50%;transform:translateY(-50%);background:#1a1e22;border:1px solid var(--line-2);color:var(--text);padding:5px 9px;border-radius:5px;font-size:11.5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:10;}
 .tool-btn:hover .tt{opacity:1;}
 
 /* ================= FLYOUTS ================= */
-.flyout{
-  position:fixed;left:64px;top:50%;transform:translateY(-50%) translateX(-6px);
-  z-index:701;width:230px;background:var(--panel);
-  border:1px solid var(--line-2);border-radius:10px;padding:14px;
-  opacity:0;pointer-events:none;transition:opacity .15s ease, transform .15s ease;
-}
+.flyout{position:fixed;left:64px;top:50%;transform:translateY(-50%) translateX(-6px);z-index:701;width:230px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:14px;opacity:0;pointer-events:none;transition:opacity .15s ease, transform .15s ease;}
 .flyout.open{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0);}
 .flyout h4{margin:0 0 10px;font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between;}
 .flyout h4 .fy-close{cursor:pointer;color:var(--text-dim);font-size:12px;background:none;border:none;padding:0;}
 .flyout h4 .fy-close:hover{color:var(--text);}
 .field-label{font-size:11px;color:var(--text-dim);margin:8px 0 4px;display:block;}
 .field-label:first-of-type{margin-top:0;}
-.fy-input,.fy-textarea,.fy-select{
-  width:100%;padding:8px 10px;border-radius:5px;border:1px solid var(--line-2);
-  background:#0b0d10;color:var(--text);font-size:12px;outline:none;font-family:inherit;
-}
+.fy-input,.fy-textarea,.fy-select{width:100%;padding:8px 10px;border-radius:5px;border:1px solid var(--line-2);background:#0b0d10;color:var(--text);font-size:12px;outline:none;font-family:inherit;}
 .fy-input:focus,.fy-textarea:focus,.fy-select:focus{border-color:var(--accent);}
 .fy-textarea{resize:vertical;min-height:50px;}
 .fy-row{display:flex;gap:6px;}
 .fy-row > *{flex:1;}
-.fy-file-btn{
-  display:block;width:100%;padding:9px;border-radius:5px;border:1px dashed var(--line-2);
-  background:transparent;color:var(--text-dim);font-size:12px;text-align:center;
-  cursor:pointer;
-}
+.fy-file-btn{display:block;width:100%;padding:9px;border-radius:5px;border:1px dashed var(--line-2);background:transparent;color:var(--text-dim);font-size:12px;text-align:center;cursor:pointer;}
 .fy-file-btn:hover{border-color:var(--accent);color:var(--text);}
-.fy-btn{
-  width:100%;margin-top:10px;padding:9px;border-radius:5px;border:none;
-  background:var(--accent);color:#fff;
-  font-size:12px;font-weight:600;cursor:pointer;
-}
+.fy-btn{width:100%;margin-top:10px;padding:9px;border-radius:5px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;}
 .fy-btn:hover{background:var(--accent-hover);}
 .align-group{display:flex;gap:5px;}
-.align-btn{
-  flex:1;padding:7px;border-radius:5px;border:1px solid var(--line-2);background:transparent;
-  color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;
-}
+.align-btn{flex:1;padding:7px;border-radius:5px;border:1px solid var(--line-2);background:transparent;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .align-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .align-btn svg{width:13px;height:13px;}
 .toggle-btn{padding:7px 11px;border-radius:5px;border:1px solid var(--line-2);background:transparent;color:var(--text-dim);cursor:pointer;font-weight:700;font-size:12px;}
@@ -435,10 +378,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 .programar-card h3{margin:0 0 5px;font-size:15px;font-weight:700;}
 .programar-card p{margin:0 0 14px;font-size:12px;color:var(--text-dim);line-height:1.5;}
 .programar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;}
-.prog-slot{
-  padding:12px 0;border-radius:6px;border:1px solid var(--line-2);
-  background:#0b0d10;color:var(--text);cursor:pointer;text-align:center;
-}
+.prog-slot{padding:12px 0;border-radius:6px;border:1px solid var(--line-2);background:#0b0d10;color:var(--text);cursor:pointer;text-align:center;}
 .prog-slot:hover{border-color:var(--accent);}
 .prog-slot.has-program{background:var(--accent-soft);border-color:var(--accent);}
 .prog-slot.active-key{background:var(--accent);color:#fff;}
@@ -459,10 +399,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
   padding:8px 14px;border-radius:14px;
   background:var(--accent);color:#fff;font-size:12px;font-weight:600;
 }
-#program-banner button{
-  background:rgba(0,0,0,0.25);border:none;color:#fff;
-  padding:4px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
-}
+#program-banner button{background:rgba(0,0,0,0.25);border:none;color:#fff;padding:4px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;}
 #program-banner button:hover{background:rgba(0,0,0,0.4);}
 
 /* ================= ELEMENT POPUP ================= */
@@ -483,39 +420,24 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 .ep-row > span:last-child{min-width:40px;text-align:right;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
 .ep-label{font-size:11px;color:var(--text-dim);margin:12px 0 6px;}
 .ep-label:first-of-type{margin-top:0;}
-.ep-textarea{
-  width:100%;min-height:48px;padding:8px 10px;border-radius:5px;
-  border:1px solid var(--line-2);background:#0b0d10;color:var(--text);
-  font-size:12px;resize:vertical;font-family:inherit;outline:none;
-}
+.ep-textarea{width:100%;min-height:48px;padding:8px 10px;border-radius:5px;border:1px solid var(--line-2);background:#0b0d10;color:var(--text);font-size:12px;resize:vertical;font-family:inherit;outline:none;}
 .ep-textarea:focus{border-color:var(--accent);}
+.ep-select{width:100%;padding:8px 10px;border-radius:5px;border:1px solid var(--line-2);background:#0b0d10;color:var(--text);font-size:12px;outline:none;font-family:inherit;margin-bottom:8px;}
+.ep-select:focus{border-color:var(--accent);}
 .ep-btns{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
-.ep-btn{
-  flex:1;min-width:80px;padding:8px;border-radius:5px;border:1px solid var(--line-2);
-  background:transparent;color:var(--text);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:5px;
-  font-size:11px;font-weight:600;
-}
+.ep-btn{flex:1;min-width:80px;padding:8px;border-radius:5px;border:1px solid var(--line-2);background:transparent;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:600;}
 .ep-btn:hover{background:var(--panel-3);}
 .ep-btn.toggled{background:var(--accent-soft-2);border-color:var(--accent);}
 .ep-btn svg{width:13px;height:13px;}
 .ep-hotkeys{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
-.ep-hotkey{
-  padding:7px 0;border-radius:5px;border:1px solid var(--line-2);
-  background:#0b0d10;color:var(--text-dim);
-  font-size:11.5px;font-weight:700;cursor:pointer;
-}
+.ep-hotkey{padding:7px 0;border-radius:5px;border:1px solid var(--line-2);background:#0b0d10;color:var(--text-dim);font-size:11.5px;font-weight:700;cursor:pointer;}
 .ep-hotkey:hover{border-color:var(--accent);}
 .ep-hotkey.has-asset{background:var(--accent-soft);border-color:var(--accent);color:var(--text);}
 .ep-hotkey.active-key{background:var(--accent);color:#fff;border-color:var(--accent);}
 .ep-colors{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
 .ep-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.10);}
 .ep-swatch.active{border-color:#fff;}
-.ep-delete{
-  width:100%;margin-top:10px;padding:9px;border-radius:5px;border:none;
-  background:rgba(192,84,84,0.16);color:#e08f8f;
-  font-size:12px;font-weight:600;cursor:pointer;
-}
+.ep-delete{width:100%;margin-top:10px;padding:9px;border-radius:5px;border:none;background:rgba(192,84,84,0.16);color:#e08f8f;font-size:12px;font-weight:600;cursor:pointer;}
 .ep-delete:hover{background:rgba(192,84,84,0.28);}
 
 /* ================= Toast ================= */
@@ -527,11 +449,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-#peer-badge{
-  position:fixed;top:10px;left:14px;z-index:500;font-size:11px;color:var(--text-dim);
-  background:var(--panel);border:1px solid var(--line);
-  padding:5px 10px;border-radius:12px;
-}
+#peer-badge{position:fixed;top:10px;left:14px;z-index:500;font-size:11px;color:var(--text-dim);background:var(--panel);border:1px solid var(--line);padding:5px 10px;border-radius:12px;}
 #peer-badge b{color:var(--text);}
 
 ::-webkit-scrollbar{width:8px;height:8px;}
@@ -568,11 +486,16 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 <div id="name-modal" class="hidden">
   <div class="name-card">
     <h3>Escolha seu nome</h3>
-    <p>Aparece junto ao seu cursor.</p>
-    <input class="gate-input" id="guest-name-input" maxlength="20" placeholder="Seu nome" autocomplete="off">
+    <p>Aparece junto ao seu cursor. Obrigatório.</p>
+    <input class="gate-input" id="guest-name-input" maxlength="20" placeholder="Digite seu nome" autocomplete="off"
+           style="text-align:left;letter-spacing:0;">
     <label class="field-label" style="margin-top:12px;">Cor do cursor</label>
     <div class="swatches" id="guest-color-swatches"></div>
-    <button class="gate-btn primary" id="guest-name-confirm" style="margin-top:16px;">Entrar</button>
+    <div class="gate-join-row" style="margin-top:16px;">
+      <button class="gate-btn" id="guest-name-cancel" style="margin-top:0;">Cancelar</button>
+      <button class="gate-btn primary" id="guest-name-confirm" style="margin-top:0;">Entrar</button>
+    </div>
+    <div id="guest-name-error" class="gate-status err" style="display:none;">Digite um nome para entrar.</div>
   </div>
 </div>
 
@@ -589,8 +512,8 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <div class="tut-section">
       <h4>Toolbar (barra lateral esquerda)</h4>
       <ul>
-        <li><b>Imagem / GIF / Vídeo</b> — escolha um arquivo ou arraste direto na tela. A posição do drop é respeitada.</li>
-        <li><b>Texto</b> — texto simples. Dê duplo-clique depois para editar em tempo real.</li>
+        <li><b>Imagem / GIF / Vídeo</b> — escolha um arquivo; depois clique na tela onde quer posicionar.</li>
+        <li><b>Texto</b> — texto simples. Duplo-clique no centro para editar direto; duplo-clique nas bordas para o painel completo (fonte, tamanho, cor).</li>
         <li><b>YouTube</b> — cole um link (aceita minutagem, ex: <code>?t=135</code>).</li>
         <li><b>Áudio</b> — vira uma barra com play, progresso e volume. O Host toca o som na live.</li>
         <li><b>HTML</b> — cola código HTML que roda em um painel. Apenas uma instância por vez.</li>
@@ -605,50 +528,35 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       <p>Clique para selecionar. Arraste para mover. Use os handles:</p>
       <ul>
         <li>Handle verde (canto inferior esquerdo) — arrastar</li>
-        <li>Handle azul (canto inferior direito) — redimensionar (segure SHIFT para esticar/amassar)</li>
+        <li>Handle azul (canto inferior direito) — redimensionar. Segure SHIFT para esticar de verdade (distorce a imagem).</li>
         <li>Handle roxo (acima) — rotacionar</li>
         <li>Botão vermelho (canto superior direito) — remover</li>
       </ul>
-      <p><b>Duplo-clique</b> em qualquer elemento abre o painel completo: opacidade, play/mute, loop, ocultar, barra de posição, volume, hotkeys e cor (para texto).</p>
+      <p><b>Ctrl+C / Ctrl+V</b> copia e cola o elemento selecionado na posição do mouse.</p>
     </div>
 
     <div class="tut-section">
       <h4>Ocultar do Host</h4>
-      <p>No painel de duplo-clique, use <b>Ocultar</b>. O elemento fica invisível apenas para o Host (o som continua), enquanto convidados ainda o veem. Útil para pré-visualizar antes de mostrar.</p>
+      <p>No painel de duplo-clique, use <b>Ocultar</b>. O elemento fica invisível apenas para o Host (o som continua).</p>
     </div>
 
     <div class="tut-section">
       <h4>Área visível do Host</h4>
-      <p>O quadro pontilhado mostra exatamente o que aparece no Host/OBS — proporção 16:9 fixa, então alinha perfeitamente para todos. Tudo que estiver <b>fora</b> dele fica só na sua tela: uma área de "bastidores" para preparar elementos sem precisar excluí-los.</p>
-      <p>Use o <b>scroll do mouse</b> para dar zoom in/out (com o cursor como centro) e arraste o fundo vazio da tela para navegar. Dê duplo-clique no fundo ou use o botão <b>Ajustar zoom</b> na toolbar para voltar à visão normal.</p>
-    </div>
-
-    <div class="tut-section">
-      <h4>Hotkeys 1-0</h4>
-      <p>Em imagens, GIFs, vídeos e YouTube, associe até 10 arquivos/links diferentes. Pressione a tecla correspondente para trocar. Pressionar a mesma tecla de novo oculta o elemento (toggle).</p>
-    </div>
-
-    <div class="tut-section">
-      <h4>Programar (presets de cena)</h4>
-      <p>Clique em <b>Programar</b> na toolbar, escolha um slot (1-0) e comece a adicionar elementos. Eles aparecem como <b>presets</b> (semitransparentes). Posicione à vontade. Ao clicar <b>Sair</b>, o conjunto é salvo.</p>
-      <p>Depois, com a tela normal, pressione a tecla do slot: todos os elementos aparecem de uma vez. Pressione de novo para esconder. Você pode ter até 10 programas diferentes.</p>
-    </div>
-
-    <div class="tut-section">
-      <h4>Mostrar mouse</h4>
-      <p>Ative <b>Mouse</b> na toolbar para que os convidados vejam seu cursor virtual com nome e cor, com animação suave. Clicar na tela mostra um efeito de click para todos.</p>
+      <p>O quadro pontilhado mostra exatamente o que aparece no Host/OBS — proporção 16:9 fixa, então alinha perfeitamente para todos. Tudo que estiver <b>fora</b> dele fica só na sua tela: uma área de "bastidores" para preparar elementos.</p>
+      <p>Use o <b>scroll do mouse</b> para dar zoom e arraste o fundo vazio para navegar. Duplo-clique no fundo ou <b>Ajustar zoom</b> na toolbar para voltar ao normal.</p>
     </div>
 
     <div class="tut-section">
       <h4>Live do Daenil</h4>
-      <p>Botão no canto superior esquerdo: incorpora a live do canal Daenil em tela cheia. Clique de novo para esconder.</p>
+      <p>Botão no canto superior esquerdo: incorpora a live do canal Daenil <b>atrás</b> da área visível (abaixo dos elementos). Clique de novo para esconder.</p>
     </div>
 
     <div class="tut-section">
       <h4>Atalhos</h4>
       <ul>
+        <li><b>Ctrl+C / Ctrl+V</b> — copiar / colar elemento</li>
         <li><b>C</b> (Host) — copia o código da sala</li>
-        <li><b>ESC</b> — sai da sala / volta ao menu</li>
+        <li><b>ESC</b> — cancela modo de posicionamento ou sai da sala</li>
         <li><b>1 a 0</b> — hotkeys e programas</li>
       </ul>
     </div>
@@ -661,7 +569,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 <div id="programar-modal" class="hidden">
   <div class="programar-card">
     <h3>Programar</h3>
-    <p>Escolha um slot. Você entra em modo edição e qualquer coisa que adicionar vira parte do preset. Ao sair, tudo é salvo. Depois use as teclas 1-0 para mostrar ou esconder o conjunto.</p>
+    <p>Escolha um slot. Você entra em modo edição e só os elementos que <b>você</b> adicionar entram no preset. Ao sair, tudo é salvo. Depois use as teclas 1-0 para mostrar ou esconder o conjunto.</p>
     <div class="programar-grid" id="programar-grid"></div>
     <button class="gate-btn" id="programar-close">Fechar</button>
   </div>
@@ -670,7 +578,6 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 <!-- ============ APP ROOT ============ -->
 <div id="app">
   <div id="app-bg"></div>
-  <div id="live-embed"><iframe allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe></div>
 
   <button id="live-btn" class="hidden" title="Mostrar live do Daenil">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -685,6 +592,10 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <button id="prog-exit">Sair</button>
   </div>
 
+  <div id="placement-hint" class="hidden">
+    <b>Clique onde colocar</b><span class="ph-esc">ESC cancela</span>
+  </div>
+
   <div id="conn-indicator" class="warn" title="Clique para esconder">
     <span class="dot"></span>
     <span id="conn-text">Conectando...</span>
@@ -696,6 +607,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
   <div id="stage">
     <div id="canvas-view">
       <canvas id="draw-canvas"></canvas>
+      <div id="live-embed"><iframe allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe></div>
       <div id="elements-layer"></div>
       <div id="stage-bounds"></div>
     </div>
@@ -765,19 +677,19 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <h4>Imagem <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-image-file">Escolher arquivo</label>
     <input type="file" id="input-image-file" accept="image/*" class="hidden">
-    <div class="fy-hint">Arraste também para posicionar.</div>
+    <div class="fy-hint">Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-gif">
     <h4>GIF <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-gif-file">Escolher arquivo</label>
     <input type="file" id="input-gif-file" accept="image/gif" class="hidden">
-    <div class="fy-hint">Arraste também para posicionar.</div>
+    <div class="fy-hint">Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-video">
     <h4>Vídeo <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-video-file">Escolher arquivo</label>
     <input type="file" id="input-video-file" accept="video/*" class="hidden">
-    <div class="fy-hint">Máx 14MB. Some ao acabar, a menos que Loop esteja ON.</div>
+    <div class="fy-hint">Máx 14MB. Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-text">
     <h4>Texto <button class="fy-close" data-close>Fechar</button></h4>
@@ -798,19 +710,20 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       </div>
     </div>
     <button class="fy-btn" id="btn-add-text">Adicionar</button>
+    <div class="fy-hint">Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-youtube">
     <h4>YouTube <button class="fy-close" data-close>Fechar</button></h4>
     <label class="field-label">Link</label>
     <input type="text" class="fy-input" id="yt-url" placeholder="https://youtu.be/...">
     <button class="fy-btn" id="btn-add-yt">Adicionar</button>
-    <div class="fy-hint">Aceita minutagem (?t=135). Some ao acabar se Loop estiver OFF.</div>
+    <div class="fy-hint">Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-audio">
     <h4>Áudio <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-audio-file">Escolher arquivo</label>
     <input type="file" id="input-audio-file" accept="audio/*" class="hidden">
-    <div class="fy-hint">Vira uma barra com play, progresso e volume. O Host toca na live.</div>
+    <div class="fy-hint">Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-brush">
     <h4>Pincel <button class="fy-close" data-close>Fechar</button></h4>
@@ -836,7 +749,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <label class="field-label">Código</label>
     <textarea class="fy-textarea" id="html-content" style="min-height:120px;font-family:monospace;font-size:11.5px;" placeholder="&lt;h1&gt;Olá&lt;/h1&gt;"></textarea>
     <button class="fy-btn" id="btn-add-html">Adicionar</button>
-    <div class="fy-hint">Uma instância por vez. Compartilhado.</div>
+    <div class="fy-hint">Uma instância por vez. Depois clique na tela para posicionar.</div>
   </div>
 </div>
 
@@ -855,11 +768,6 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 <script>
 /* ==========================================================================
    STREAMCANVAS
-   Sistema de coordenadas:
-   - Existe um "canvas virtual" de proporção fixa 16:9 que representa a área
-     visível no Host/OBS. Todos os elementos, strokes e cursores são posicio-
-     nados em frações desse canvas (0..1). Assim host e clientes sempre
-     concordam sobre a posição, independente do tamanho da janela.
    ========================================================================== */
 
 const ICONS = {
@@ -872,8 +780,9 @@ const ICONS = {
   loop:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>'
 };
 
-/* ---------- Proporção fixa do canvas (igual em host e clientes) ---------- */
 const CANVAS_AR = 16 / 9.2;
+
+const TEXT_FONTS = ['Segoe UI', 'Arial', 'Helvetica', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New', 'Trebuchet MS', 'Impact'];
 
 /* ---------- Utils ---------- */
 const Utils = (() => {
@@ -955,8 +864,6 @@ const Utils = (() => {
     const s = document.getElementById('stage');
     return { w: s.clientWidth || 1, h: s.clientHeight || 1 };
   }
-  /* Retângulo do canvas virtual (16:9) dentro do stage, em pixels CSS.
-     Host e clientes usam EXATAMENTE esta referência. */
   function getCanvasRect(){
     const { w: SW, h: SH } = getStageSize();
     const stageAR = SW / SH;
@@ -965,9 +872,17 @@ const Utils = (() => {
     else { w = SW; h = w / CANVAS_AR; }
     return { x: (SW - w) / 2, y: (SH - h) / 2, w, h };
   }
+  function loadImageSize(dataUrl){
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => res({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => res({ w: 1, h: 1 });
+      img.src = dataUrl;
+    });
+  }
   return { uid, randomRoomCode, clamp, throttle, escapeAttr, extractYouTubeInfo,
            isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay,
-           toCanvasPoint, getStageSize, getCanvasRect };
+           toCanvasPoint, getStageSize, getCanvasRect, loadImageSize };
 })();
 
 /* ---------- State ---------- */
@@ -993,6 +908,9 @@ const State = {
   activePrograms: new Set(),
   mediaTickTimer: null,
   view: { x: 0, y: 0, scale: 1 },
+  pendingPlacement: null,
+  clipboard: null,
+  mouseStagePos: { x: 0.5, y: 0.5 },
 };
 State.myColor = Utils.colorForUser(State.myUserId);
 
@@ -1258,6 +1176,17 @@ const Elements = (() => {
   const domNodes = new Map();
   const HOTKEYS = ['1','2','3','4','5','6','7','8','9','0'];
 
+  const throttledMove = Utils.throttle((id) => {
+    const el = State.elements.get(id); if(!el) return;
+    Net.send({ type: Net.MSG.EL_MOVE, id, x: el.x, y: el.y });
+  }, 40);
+  const throttledResize = Utils.throttle((id) => {
+    const el = State.elements.get(id); if(!el) return;
+    const patch = { w: el.w, ar: el.ar, rot: el.rot, stretch: !!el.stretch };
+    if(el.type === 'text') patch.content = Object.assign({}, el.content);
+    Net.send({ type: Net.MSG.EL_UPDATE, id, patch });
+  }, 55);
+
   function createElementObject(p){
     return Object.assign({
       id: Utils.uid('el'),
@@ -1265,6 +1194,7 @@ const Elements = (() => {
       x: 0.5, y: 0.5, w: 0.22, ar: 1, rot: 0,
       opacity: 1,
       hidden: false, ghost: false, programKey: null,
+      stretch: false,
       content: {}, v: 0,
       userId: State.myUserId,
       userName: State.myName,
@@ -1280,6 +1210,7 @@ const Elements = (() => {
     t.hidden = !!s.hidden;
     t.ghost = !!s.ghost;
     t.programKey = s.programKey || null;
+    t.stretch = !!s.stretch;
     t.v = s.v || 0;
     t.userId = s.userId; t.userName = s.userName; t.userColor = s.userColor;
     t.createdAt = s.createdAt || Date.now();
@@ -1317,6 +1248,9 @@ const Elements = (() => {
     const el = State.elements.get(id);
     State.removed.add(id);
     if(!el) return;
+    if(DragSession && DragSession.isActive && DragSession.getElId && DragSession.getElId() === id){
+      DragSession.cancel();
+    }
     State.elements.delete(id);
     YouTubeSync.destroy(id);
     MediaCtl.unregister(id);
@@ -1329,6 +1263,7 @@ const Elements = (() => {
     Popup.hideIfTarget(id);
   }
   function clearAllLocal(){
+    if(DragSession && DragSession.cancel) DragSession.cancel();
     State.elements.forEach((el, id) => { YouTubeSync.destroy(id); MediaCtl.unregister(id); });
     State.elements.clear();
     domNodes.forEach(n => n.remove());
@@ -1504,6 +1439,7 @@ const Elements = (() => {
   function updateNodeContent(node, el){
     const frame = node.querySelector('.el-frame');
     node.classList.toggle('ghost', !!el.ghost);
+    node.classList.toggle('stretched', !!el.stretch);
 
     if(el.hidden) node.dataset.hidden = '1';
     else delete node.dataset.hidden;
@@ -1533,21 +1469,14 @@ const Elements = (() => {
       txt.style.fontSize = Math.max(6, baseF * scale) + 'px';
       txt.style.color = el.content.color || '#ffffff';
       txt.style.fontWeight = el.content.bold ? '700' : '500';
+      txt.style.fontFamily = el.content.fontFamily || "'Segoe UI', sans-serif";
       txt.style.justifyContent = el.content.align === 'left' ? 'flex-start' : (el.content.align === 'right' ? 'flex-end' : 'center');
       txt.style.textAlign = el.content.align || 'center';
       const newText = el.content.text || '';
       const isEmpty = newText.trim() === '';
       if(el._lastText !== newText){
         el._lastText = newText;
-        if(isEmpty) txt.style.opacity = '0';
-        else {
-          txt.style.opacity = '1';
-          if(!State.programMode){
-            txt.style.animation = 'none';
-            void txt.offsetWidth;
-            txt.style.animation = 'textPulse .2s ease';
-          }
-        }
+        txt.style.opacity = isEmpty ? '0' : '1';
       }
     } else if(el.type === 'youtube'){
       const iframe = frame.querySelector('iframe');
@@ -1632,7 +1561,6 @@ const Elements = (() => {
     }
   }
 
-  /* Posicionamento baseado no canvas virtual (16:9). Igual em qualquer tela. */
   function positionNode(node, el){
     const c = Utils.getCanvasRect();
     const pxW = Math.max(12, el.w * c.w);
@@ -1651,49 +1579,51 @@ const Elements = (() => {
   }
 
   function attachInteractions(node, elId, handle, rotHandle, dragHandle, delHandle){
-    let dragging = false, dOX = 0, dOY = 0;
-    let resizing = false, rsW = 0, rsAr = 1, rsDist = 1;
-    let rotating = false;
-
     function select(){
       document.querySelectorAll('.el.selected').forEach(n => n.classList.remove('selected'));
       node.classList.add('selected');
       State.selectedElId = elId;
     }
-    function beginDrag(e){
-      const el = State.elements.get(elId); if(!el) return;
-      e.stopPropagation();
-      select();
-      dragging = true;
-      node.classList.add('dragging');
-      try{ node.setPointerCapture(e.pointerId); }catch(err){}
-      const r = document.getElementById('stage').getBoundingClientRect();
-      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
-      const c = Utils.getCanvasRect();
-      const cx = c.x + el.x * c.w;
-      const cy = c.y + el.y * c.h;
-      dOX = cp.x - cx;
-      dOY = cp.y - cy;
-    }
 
     node.addEventListener('pointerdown', (e) => {
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
       if(e.target === handle || e.target === rotHandle || e.target === delHandle || e.target === dragHandle) return;
       if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.evp-btns') || e.target.closest('.el-audio-bar') || e.target.closest('.el-embed'))) return;
       const el = State.elements.get(elId); if(!el) return;
       if(el.type === 'text' && e.target.classList && e.target.classList.contains('el-text') && e.target.isContentEditable) return;
       if(State.activeTool === 'brush' || State.activeTool === 'eraser') return;
-      beginDrag(e);
+      e.stopPropagation();
+      select();
+      DragSession.start('drag', elId, node, e);
     });
-    dragHandle.addEventListener('pointerdown', (e) => { if(e.button !== 0) return; beginDrag(e); });
+
+    dragHandle.addEventListener('pointerdown', (e) => {
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      e.stopPropagation();
+      select();
+      DragSession.start('drag', elId, node, e);
+    });
 
     node.addEventListener('dblclick', (e) => {
       const el = State.elements.get(elId); if(!el) return;
+
       if(el.type === 'text'){
         const txt = node.querySelector('.el-text'); if(!txt) return;
+        const r = txt.getBoundingClientRect();
+        const lx = e.clientX - r.left, ly = e.clientY - r.top;
+        // Padding do .el-text é 6px top/bottom, 10px left/right.
+        const PAD_X = 12, PAD_Y = 8;
+        const inPadding = lx < PAD_X || lx > r.width - PAD_X || ly < PAD_Y || ly > r.height - PAD_Y;
+        if(inPadding){
+          e.stopPropagation();
+          Popup.show(elId, e.clientX, e.clientY);
+          return;
+        }
+        // Edição inline (conteúdo).
         e.stopPropagation();
         txt.contentEditable = 'true'; txt.focus();
         const sel = window.getSelection();
-        if(sel){ const r = document.createRange(); r.selectNodeContents(txt); sel.removeAllRanges(); sel.addRange(r); }
+        if(sel){ const rg = document.createRange(); rg.selectNodeContents(txt); sel.removeAllRanges(); sel.addRange(rg); }
         const push = Utils.throttle(() => {
           const val = (txt.innerText || '').slice(0, 600);
           const cur = State.elements.get(elId); if(!cur) return;
@@ -1713,77 +1643,25 @@ const Elements = (() => {
       }
     });
 
-    const thrMove = Utils.throttle((id) => {
-      const el = State.elements.get(id); if(!el) return;
-      Net.send({ type: Net.MSG.EL_MOVE, id, x: el.x, y: el.y });
-    }, 40);
-    const thrUpd = Utils.throttle((id) => {
-      const el = State.elements.get(id); if(!el) return;
-      const patch = { w: el.w, ar: el.ar, rot: el.rot };
-      if(el.type === 'text') patch.content = Object.assign({}, el.content);
-      Net.send({ type: Net.MSG.EL_UPDATE, id, patch });
-    }, 55);
-
-    window.addEventListener('pointermove', (e) => {
-      const el = State.elements.get(elId); if(!el) return;
-      const r = document.getElementById('stage').getBoundingClientRect();
-      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
-      const c = Utils.getCanvasRect();
-      if(dragging){
-        const newCx = cp.x - dOX;
-        const newCy = cp.y - dOY;
-        el.x = Utils.clamp((newCx - c.x) / c.w, -1, 2);
-        el.y = Utils.clamp((newCy - c.y) / c.h, -1, 2);
-        positionNode(node, el);
-        thrMove(elId);
-      } else if(resizing){
-        const cx = c.x + el.x * c.w;
-        const cy = c.y + el.y * c.h;
-        const dx = cp.x - cx, dy = cp.y - cy;
-        if(e.shiftKey){
-          const wPx = Math.max(24, Math.abs(dx) * 2);
-          const hPx = Math.max(14, Math.abs(dy) * 2);
-          el.w = Utils.clamp(wPx / c.w, 0.02, 2.5);
-          el.ar = Utils.clamp(hPx / wPx, 0.02, 14);
-        } else {
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          const scale = Utils.clamp(dist / rsDist, 0.1, 8);
-          el.w = Utils.clamp(rsW * scale, 0.02, 2.5);
-          el.ar = rsAr;
-        }
-        positionNode(node, el); updateNodeContent(node, el); thrUpd(elId);
-      } else if(rotating){
-        const cx = c.x + el.x * c.w;
-        const cy = c.y + el.y * c.h;
-        const angle = Math.atan2(cp.y - cy, cp.x - cx) * 180 / Math.PI;
-        el.rot = Math.round(angle + 90);
-        positionNode(node, el); thrUpd(elId);
-      }
-    });
-
-    window.addEventListener('pointerup', () => {
-      if(dragging){ dragging = false; node.classList.remove('dragging'); finalizeUpdate(elId, {x:true, y:true}); }
-      if(resizing){ resizing = false; finalizeUpdate(elId, {w:true}); }
-      if(rotating){ rotating = false; finalizeUpdate(elId, {rot:true}); }
-    });
-
     handle.addEventListener('pointerdown', (e) => {
-      e.stopPropagation(); select();
-      const el = State.elements.get(elId); if(!el) return;
-      resizing = true; rsW = el.w; rsAr = el.ar;
-      const r = document.getElementById('stage').getBoundingClientRect();
-      const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
-      const c = Utils.getCanvasRect();
-      const cx = c.x + el.x * c.w, cy = c.y + el.y * c.h;
-      const dx = cp.x - cx, dy = cp.y - cy;
-      rsDist = Math.max(8, Math.sqrt(dx*dx + dy*dy));
-      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      e.stopPropagation();
+      select();
+      DragSession.start('resize', elId, node, e);
     });
+
     rotHandle.addEventListener('pointerdown', (e) => {
-      e.stopPropagation(); select(); rotating = true;
-      try{ rotHandle.setPointerCapture(e.pointerId); }catch(err){}
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      e.stopPropagation();
+      select();
+      DragSession.start('rotate', elId, node, e);
     });
-    delHandle.addEventListener('pointerdown', (e) => { e.stopPropagation(); Actions.removeElement(elId); });
+
+    delHandle.addEventListener('pointerdown', (e) => {
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      e.stopPropagation();
+      Actions.removeElement(elId);
+    });
   }
 
   function finalizeUpdate(id, fields){
@@ -1791,14 +1669,142 @@ const Elements = (() => {
     const patch = {};
     if(fields.x) patch.x = el.x;
     if(fields.y) patch.y = el.y;
-    if(fields.w){ patch.w = el.w; patch.ar = el.ar; }
+    if(fields.w){ patch.w = el.w; patch.ar = el.ar; patch.stretch = !!el.stretch; }
     if(fields.rot) patch.rot = el.rot;
     if(el.type === 'text') patch.content = Object.assign({}, el.content);
     Net.send({ type: Net.MSG.EL_UPDATE, id, patch });
   }
 
   return { createElementObject, localAdd, localUpdate, localRemove, clearAllLocal,
-           renderElement, repositionAll, getStageSize, domNodes, pushHistory, HOTKEYS };
+           renderElement, repositionAll, getStageSize, domNodes, pushHistory, HOTKEYS,
+           positionNode, updateNodeContent, finalizeUpdate, throttledMove, throttledResize };
+})();
+
+/* ---------- DragSession ---------- */
+const DragSession = (() => {
+  let active = false;
+  let pointerId = null;
+  let type = null;
+  let elId = null;
+  let node = null;
+  let dOX = 0, dOY = 0;
+  let rsW = 0, rsAr = 1, rsDist = 1;
+
+  function clearClass(){ if(node){ try{ node.classList.remove('dragging'); }catch(e){} } }
+  function releaseCapture(){
+    if(node && pointerId != null){
+      try{ if(node.hasPointerCapture && node.hasPointerCapture(pointerId)) node.releasePointerCapture(pointerId); }catch(e){}
+    }
+  }
+  function reset(){
+    clearClass(); releaseCapture();
+    active = false; pointerId = null; type = null; elId = null; node = null;
+    dOX = dOY = 0; rsW = rsAr = rsDist = 0;
+  }
+
+  function start(_type, _elId, _node, e){
+    if(active) reset();
+    const el = State.elements.get(_elId);
+    if(!el) return;
+    active = true;
+    pointerId = e.pointerId;
+    type = _type;
+    elId = _elId;
+    node = _node;
+    try{ node.setPointerCapture(e.pointerId); }catch(err){}
+    if(_type === 'drag') node.classList.add('dragging');
+
+    const r = document.getElementById('stage').getBoundingClientRect();
+    const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
+    const c = Utils.getCanvasRect();
+    const cx = c.x + el.x * c.w;
+    const cy = c.y + el.y * c.h;
+
+    if(_type === 'drag'){
+      dOX = cp.x - cx;
+      dOY = cp.y - cy;
+    } else if(_type === 'resize'){
+      rsW = el.w; rsAr = el.ar;
+      const dx = cp.x - cx, dy = cp.y - cy;
+      rsDist = Math.max(8, Math.sqrt(dx*dx + dy*dy));
+    }
+  }
+
+  function finish(){
+    if(!active) return;
+    const _elId = elId;
+    const _type = type;
+    reset();
+    if(!_elId) return;
+    if(_type === 'drag') Elements.finalizeUpdate(_elId, { x:true, y:true });
+    else if(_type === 'resize') Elements.finalizeUpdate(_elId, { w:true });
+    else if(_type === 'rotate') Elements.finalizeUpdate(_elId, { rot:true });
+  }
+  function cancel(){ reset(); }
+
+  function onMove(e){
+    if(!active) return;
+    if(pointerId != null && e.pointerId !== pointerId) return;
+    if(e.pointerType === 'mouse' && e.buttons === 0){ finish(); return; }
+
+    const el = State.elements.get(elId);
+    if(!el || !node || !document.body.contains(node)){ reset(); return; }
+
+    const r = document.getElementById('stage').getBoundingClientRect();
+    const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
+    const c = Utils.getCanvasRect();
+
+    if(type === 'drag'){
+      const newCx = cp.x - dOX;
+      const newCy = cp.y - dOY;
+      el.x = Utils.clamp((newCx - c.x) / c.w, -1, 2);
+      el.y = Utils.clamp((newCy - c.y) / c.h, -1, 2);
+      Elements.positionNode(node, el);
+      Elements.throttledMove(el.id);
+    } else if(type === 'resize'){
+      const cx = c.x + el.x * c.w;
+      const cy = c.y + el.y * c.h;
+      const dx = cp.x - cx, dy = cp.y - cy;
+      if(e.shiftKey){
+        // Estica fisicamente: altera w e ar independentes e marca stretch.
+        const wPx = Math.max(24, Math.abs(dx) * 2);
+        const hPx = Math.max(14, Math.abs(dy) * 2);
+        el.w = Utils.clamp(wPx / c.w, 0.02, 2.5);
+        el.ar = Utils.clamp(hPx / wPx, 0.02, 14);
+        if(!el.stretch){ el.stretch = true; node.classList.add('stretched'); }
+      } else {
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const scale = Utils.clamp(dist / rsDist, 0.1, 8);
+        el.w = Utils.clamp(rsW * scale, 0.02, 2.5);
+        el.ar = rsAr;
+        if(el.stretch){ el.stretch = false; node.classList.remove('stretched'); }
+      }
+      Elements.positionNode(node, el);
+      Elements.updateNodeContent(node, el);
+      Elements.throttledResize(el.id);
+    } else if(type === 'rotate'){
+      const cx = c.x + el.x * c.w;
+      const cy = c.y + el.y * c.h;
+      const angle = Math.atan2(cp.y - cy, cp.x - cx) * 180 / Math.PI;
+      el.rot = Math.round(angle + 90);
+      Elements.positionNode(node, el);
+      Elements.throttledResize(el.id);
+    }
+  }
+
+  function onUp(e){
+    if(!active) return;
+    if(pointerId != null && e.pointerId !== pointerId) return;
+    finish();
+  }
+
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  window.addEventListener('blur', () => { if(active) finish(); });
+  document.addEventListener('visibilitychange', () => { if(document.hidden && active) finish(); });
+
+  return { start, cancel, finish, isActive: () => active, getElId: () => elId };
 })();
 
 /* ---------- Drawing ---------- */
@@ -1915,14 +1921,12 @@ const RemoteCursors = (() => {
   function cursorSVG(color){
     return `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 2l14 6.5-6 1.7L9.7 16z" fill="${color}" stroke="white" stroke-width="1"/></svg>`;
   }
-
   function cleanupStray(userId){
     const wanted = nodes.get(userId);
     document.querySelectorAll('.remote-cursor').forEach(n => {
       if(n.dataset.userId === userId && n !== wanted){ n.remove(); }
     });
   }
-
   function show(userId, x, y, color, name){
     if(!userId || userId === State.myUserId) return;
     const c = Utils.getCanvasRect();
@@ -1950,7 +1954,6 @@ const RemoteCursors = (() => {
     node.style.transform = `translate(${c.x + x * c.w}px, ${c.y + y * c.h}px)`;
     node.style.opacity = '1';
   }
-
   function click(userId){
     const node = nodes.get(userId);
     if(!node) return;
@@ -1959,19 +1962,16 @@ const RemoteCursors = (() => {
     node.classList.add('clicking');
     setTimeout(() => node.classList.remove('clicking'), 500);
   }
-
   function hide(userId){
     document.querySelectorAll('.remote-cursor').forEach(n => {
       if(n.dataset.userId === userId) n.remove();
     });
     nodes.delete(userId);
   }
-
   function clearAll(){
     document.querySelectorAll('.remote-cursor').forEach(n => n.remove());
     nodes.clear();
   }
-
   return { show, click, hide, clearAll };
 })();
 
@@ -1989,6 +1989,7 @@ const Actions = (() => {
       hidden: false,
       ghost: !!opts.ghost || State.programMode,
       programKey: opts.programKey || null,
+      stretch: !!opts.stretch,
       content: content || {},
       userId: State.myUserId,
       userName: State.myName,
@@ -2027,19 +2028,24 @@ const Actions = (() => {
     const raw = await Utils.fileToDataURL(file);
     const small = await Utils.downscaleImage(raw, 1280);
     if(!Utils.isSafeMediaDataUrl(small)){ UI.toast('Imagem inválida'); return; }
-    const img = new Image();
-    img.onload = () => {
-      const ar = img.height / img.width;
-      createElement('image', { src: small, name: file.name, variants: {} }, { w: 0.24, ar, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
-    };
-    img.src = small;
+    const size = await Utils.loadImageSize(small);
+    const ar = size.h / size.w;
+    const content = { src: small, name: file.name, variants: {} };
+    const opts = { w: 0.24, ar };
+    if(pos) createElement('image', content, Object.assign(opts, { x: pos.x, y: pos.y }));
+    else UI.enterPlacement('image', content, opts);
   }
   async function addGifFromFile(file, pos){
     if(!file) return;
     if(file.size > 6 * 1024 * 1024){ UI.toast('GIF muito grande'); return; }
     const raw = await Utils.fileToDataURL(file);
     if(!Utils.isSafeMediaDataUrl(raw)){ UI.toast('GIF inválido'); return; }
-    createElement('gif', { src: raw, name: file.name, variants: {} }, { w: 0.22, ar: 1, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
+    const size = await Utils.loadImageSize(raw);
+    const ar = size.h / size.w;
+    const content = { src: raw, name: file.name, variants: {} };
+    const opts = { w: 0.22, ar };
+    if(pos) createElement('gif', content, Object.assign(opts, { x: pos.x, y: pos.y }));
+    else UI.enterPlacement('gif', content, opts);
   }
   async function addVideoFromFile(file, pos){
     if(!file) return;
@@ -2048,11 +2054,14 @@ const Actions = (() => {
     if(!Utils.isSafeMediaDataUrl(raw)){ UI.toast('Vídeo inválido'); return; }
     const v = document.createElement('video');
     v.preload = 'metadata';
-    v.onloadedmetadata = () => {
-      const ar = v.videoHeight / v.videoWidth || 0.5625;
-      createElement('video', { src: raw, name: file.name, playing: false, muted: true, loop: false, variants: {} }, { w: 0.34, ar, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
+    const finish = (ar) => {
+      const content = { src: raw, name: file.name, playing: false, muted: true, loop: false, variants: {} };
+      const opts = { w: 0.34, ar };
+      if(pos) createElement('video', content, Object.assign(opts, { x: pos.x, y: pos.y }));
+      else UI.enterPlacement('video', content, opts);
     };
-    v.onerror = () => createElement('video', { src: raw, name: file.name, playing: false, muted: true, loop: false, variants: {} }, { w: 0.34, ar: 0.5625, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
+    v.onloadedmetadata = () => finish(v.videoHeight / v.videoWidth || 0.5625);
+    v.onerror = () => finish(0.5625);
     v.src = raw;
   }
   async function addAudioFromFile(file, pos){
@@ -2060,17 +2069,23 @@ const Actions = (() => {
     if(file.size > 6 * 1024 * 1024){ UI.toast('Áudio muito grande'); return; }
     const raw = await Utils.fileToDataURL(file);
     if(!Utils.isSafeMediaDataUrl(raw)){ UI.toast('Áudio inválido'); return; }
-    createElement('audio', { src: raw, name: file.name, playing: false, loop: false }, { w: 0.42, ar: 0.085, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
+    const content = { src: raw, name: file.name, playing: false, loop: false };
+    const opts = { w: 0.42, ar: 0.085 };
+    if(pos) createElement('audio', content, Object.assign(opts, { x: pos.x, y: pos.y }));
+    else UI.enterPlacement('audio', content, opts);
   }
   async function addHtmlFromFile(file, pos){
     if(!file) return;
     const toRemove = [];
-    State.elements.forEach(el => { if(el.type === 'embed' && el.content.kind === 'html' && !el.ghost) toRemove.push(el.id); });
+    State.elements.forEach(el => { if(el.type === 'embed' && el.content.kind === 'html' && !el.ghost && el.userId === State.myUserId) toRemove.push(el.id); });
     toRemove.forEach(removeElement);
     try{
       const code = await file.text();
-      createElement('embed', { kind:'html', html: code, name: file.name }, { w: 0.36, ar: 0.62, x: pos ? pos.x : 0.5, y: pos ? pos.y : 0.5 });
-      UI.toast('HTML adicionado');
+      const content = { kind:'html', html: code, name: file.name };
+      const opts = { w: 0.36, ar: 0.62 };
+      if(pos) createElement('embed', content, Object.assign(opts, { x: pos.x, y: pos.y }));
+      else UI.enterPlacement('embed', content, opts);
+      UI.toast('HTML pronto — clique para posicionar');
     }catch(e){ UI.toast('Erro ao ler HTML'); }
   }
   async function addFileByType(file, pos){
@@ -2083,8 +2098,28 @@ const Actions = (() => {
     if(t.startsWith('audio/')) return addAudioFromFile(file, pos);
     UI.toast('Tipo não suportado');
   }
+
+  function pasteCloneAt(src, x, y){
+    const fresh = Elements.createElementObject({
+      type: src.type,
+      x, y,
+      w: src.w, ar: src.ar, rot: src.rot,
+      opacity: src.opacity == null ? 1 : src.opacity,
+      hidden: false,
+      stretch: !!src.stretch,
+      content: JSON.parse(JSON.stringify(src.content || {})),
+      userId: State.myUserId,
+      userName: State.myName,
+      userColor: State.myColor,
+    });
+    Elements.localAdd(fresh);
+    Net.send({ type: Net.MSG.EL_CREATE, element: fresh });
+    return fresh;
+  }
+
   return { createElement, removeElement, clearScreen, undo, redo,
-           addImageFromFile, addGifFromFile, addVideoFromFile, addAudioFromFile, addHtmlFromFile, addFileByType };
+           addImageFromFile, addGifFromFile, addVideoFromFile, addAudioFromFile, addHtmlFromFile, addFileByType,
+           pasteCloneAt };
 })();
 
 /* ---------- Programar ---------- */
@@ -2135,6 +2170,9 @@ const Programar = (() => {
       clone.ghost = true;
       clone.id = Utils.uid('ghost');
       clone.v = 0;
+      clone.userId = State.myUserId;
+      clone.userName = State.myName;
+      clone.userColor = State.myColor;
       Elements.localAdd(clone, {silent:true});
     });
     UI.toast('Modo Programar: adicione elementos para o slot ' + key);
@@ -2153,6 +2191,7 @@ const Programar = (() => {
     const newIds = [];
     const ghosts = [];
     State.elements.forEach(el => {
+      if(el.userId !== State.myUserId) return; // só pega os MEUS
       const isGhost = !!el.ghost;
       const isNew = !start.has(el.id);
       if(isGhost || isNew){
@@ -2162,6 +2201,9 @@ const Programar = (() => {
         delete clean.v;
         delete clean._audioEl;
         delete clean._lastText;
+        clean.userId = State.myUserId;
+        clean.userName = State.myName;
+        clean.userColor = State.myColor;
         ghosts.push(clean);
         newIds.push(el.id);
       }
@@ -2182,7 +2224,7 @@ const Programar = (() => {
 
   function hasSpawned(key){
     let found = false;
-    State.elements.forEach(el => { if(el.programKey === key) found = true; });
+    State.elements.forEach(el => { if(el.programKey === key && el.userId === State.myUserId) found = true; });
     return found;
   }
 
@@ -2207,7 +2249,7 @@ const Programar = (() => {
 
   function removeProgramElements(key){
     const ids = [];
-    State.elements.forEach(el => { if(el.programKey === key) ids.push(el.id); });
+    State.elements.forEach(el => { if(el.programKey === key && el.userId === State.myUserId) ids.push(el.id); });
     ids.forEach(id => Actions.removeElement(id));
     return ids.length > 0;
   }
@@ -2237,6 +2279,7 @@ function triggerHotkey(key){
   if(Programar.toggleProgram(key)) return;
   let changed = false;
   State.elements.forEach(el => {
+    if(el.userId !== State.myUserId) return;
     if(!el.content.variants) return;
     const v = el.content.variants[key];
     if(!v) return;
@@ -2282,6 +2325,7 @@ function buildFullStateSnapshot(){
     elements: Array.from(State.elements.values()).filter(el => !el.ghost).map(el => ({
       id: el.id, type: el.type, x: el.x, y: el.y, w: el.w, ar: el.ar,
       rot: el.rot, opacity: el.opacity, hidden: !!el.hidden,
+      stretch: !!el.stretch,
       programKey: el.programKey || null,
       content: el.content, v: el.v,
       userId: el.userId, userName: el.userName, userColor: el.userColor,
@@ -2693,6 +2737,25 @@ const Popup = (() => {
       ta.addEventListener('pointerdown', (e) => e.stopPropagation());
       bodyEl.appendChild(ta);
 
+      const fLbl = document.createElement('div');
+      fLbl.className = 'ep-label'; fLbl.textContent = 'Fonte';
+      bodyEl.appendChild(fLbl);
+      const fSel = document.createElement('select');
+      fSel.className = 'ep-select';
+      TEXT_FONTS.forEach(f => {
+        const o = document.createElement('option');
+        o.value = f; o.textContent = f;
+        if((el.content.fontFamily || 'Segoe UI') === f) o.selected = true;
+        fSel.appendChild(o);
+      });
+      fSel.addEventListener('change', () => {
+        el.content.fontFamily = fSel.value;
+        Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { fontFamily: fSel.value } } });
+        Elements.renderElement(el);
+      });
+      fSel.addEventListener('pointerdown', (e) => e.stopPropagation());
+      bodyEl.appendChild(fSel);
+
       const sizeRow = document.createElement('div');
       sizeRow.className = 'ep-row';
       sizeRow.innerHTML = '<span>Tamanho</span>';
@@ -2772,6 +2835,7 @@ const UI = (() => {
   const liveBtnLabel = document.getElementById('live-btn-label');
   const tutorialModal = document.getElementById('tutorial-modal');
   const stageBounds = document.getElementById('stage-bounds');
+  const placementHint = document.getElementById('placement-hint');
 
   const peerNames = new Map();
   const peerColors = new Map();
@@ -2808,22 +2872,31 @@ const UI = (() => {
     hostHint.classList.toggle('hidden', n > 0);
   }
 
-  /* Atualiza o retângulo visual do canvas virtual (16:9). */
-function updateStageBounds(){
-  if(!stageBounds) return;
-  const c = Utils.getCanvasRect();
-  const pad = 2; // 2px topo + 2px base = os 4px que faltavam
-  stageBounds.style.left   = c.x + 'px';
-  stageBounds.style.top    = (c.y - pad) + 'px';
-  stageBounds.style.width  = c.w + 'px';
-  stageBounds.style.height = (c.h + pad * 2) + 'px';
-}
+  function updateStageBounds(){
+    if(!stageBounds) return;
+    const c = Utils.getCanvasRect();
+    const pad = 2;
+    stageBounds.style.left   = c.x + 'px';
+    stageBounds.style.top    = (c.y - pad) + 'px';
+    stageBounds.style.width  = c.w + 'px';
+    stageBounds.style.height = (c.h + pad * 2) + 'px';
+  }
+
+  function updateLiveEmbedRect(){
+    if(!liveEmbed) return;
+    const c = Utils.getCanvasRect();
+    liveEmbed.style.left = c.x + 'px';
+    liveEmbed.style.top = c.y + 'px';
+    liveEmbed.style.width = c.w + 'px';
+    liveEmbed.style.height = c.h + 'px';
+  }
 
   function enterApp(){
     gate.style.display = 'none';
     app.classList.add('active');
     connRoomCode.textContent = State.roomCode;
     updateStageBounds();
+    updateLiveEmbedRect();
   }
   function activateHostUI(){
     document.body.classList.add('host-mode');
@@ -2841,6 +2914,18 @@ function updateStageBounds(){
     setTimeout(() => connIndicator.classList.add('faded'), 4000);
   }
 
+  /* ---------- Modo de posicionamento ---------- */
+  function enterPlacement(type, content, opts){
+    State.pendingPlacement = { type, content, opts: opts || {} };
+    document.body.classList.add('placing');
+    placementHint.classList.remove('hidden');
+  }
+  function exitPlacement(){
+    State.pendingPlacement = null;
+    document.body.classList.remove('placing');
+    placementHint.classList.add('hidden');
+  }
+
   function peerLibAvailable(){ return typeof Peer !== 'undefined'; }
   function initHostHandlers(){
     Net.init({
@@ -2856,12 +2941,15 @@ function updateStageBounds(){
     Elements.repositionAll();
     resetView();
     updateStageBounds();
+    updateLiveEmbedRect();
   }
 
   function resetToGate(){
     try{ localStorage.clear(); }catch(e){}
     try{ sessionStorage.clear(); }catch(e){}
     try{ if(State.peer) State.peer.destroy(); }catch(e){}
+    try{ DragSession.cancel(); }catch(e){}
+    exitPlacement();
     State.peer = null; State.hostConn = null;
     State.clientConns.clear();
     State.role = null; State.roomCode = null;
@@ -2874,6 +2962,7 @@ function updateStageBounds(){
     State.programMode = false; State.editingProgram = null;
     State._programSessionStart = null;
     State.programs = {};
+    State.clipboard = null;
     resetView();
     RemoteCursors.clearAll();
     Elements.domNodes.forEach(n => n.remove()); Elements.domNodes.clear();
@@ -2903,18 +2992,47 @@ function updateStageBounds(){
 
   window.addEventListener('keydown', (e) => {
     const tag = (e.target && e.target.tagName) || '';
-    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable);
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable);
 
     if(e.key === 'Escape'){
       if(!nameModal.classList.contains('hidden')) return;
       if(!tutorialModal.classList.contains('hidden')){ tutorialModal.classList.add('hidden'); return; }
       if(!document.getElementById('programar-modal').classList.contains('hidden')){ document.getElementById('programar-modal').classList.add('hidden'); return; }
       if(State.programMode){ Programar.exitEdit(); return; }
+      if(State.pendingPlacement){ exitPlacement(); return; }
+      if(DragSession.isActive()){ DragSession.cancel(); return; }
       if(typing) return;
       if(app.classList.contains('active')) resetToGate();
       return;
     }
+
     if(typing) return;
+
+    // Ctrl+C — copiar elemento selecionado
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'c' || e.key === 'C')){
+      if(State.role && State.role !== 'host' && State.selectedElId){
+        const el = State.elements.get(State.selectedElId);
+        if(el){
+          const clone = JSON.parse(JSON.stringify(el));
+          delete clone.id; delete clone.v; delete clone.createdAt;
+          delete clone.userId; delete clone.userName; delete clone.userColor;
+          delete clone.programKey; delete clone._audioEl; delete clone._lastText;
+          State.clipboard = clone;
+          toastMsg('Copiado');
+        }
+      }
+      return;
+    }
+    // Ctrl+V — colar na posição do mouse
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'v' || e.key === 'V')){
+      if(State.role && State.role !== 'host' && State.clipboard){
+        e.preventDefault();
+        Actions.pasteCloneAt(State.clipboard, State.mouseStagePos.x, State.mouseStagePos.y);
+        toastMsg('Colado');
+      }
+      return;
+    }
+
     if((e.key === 'c' || e.key === 'C') && State.role === 'host' && State.roomCode && !e.ctrlKey && !e.metaKey){
       try{ navigator.clipboard && navigator.clipboard.writeText(State.roomCode); }catch(err){}
       return;
@@ -2956,7 +3074,14 @@ function updateStageBounds(){
       return;
     }
     const ni = document.getElementById('host-name-input');
-    State.myName = (ni.value || 'Host').trim().slice(0, 24) || 'Host';
+    const n = (ni.value || '').trim().slice(0, 24);
+    if(!n){
+      gateStatus.className = 'gate-status err';
+      gateStatus.textContent = 'Digite um nome.';
+      ni.focus();
+      return;
+    }
+    State.myName = n;
     State.myColor = Utils.colorForUser(State.myUserId);
     await becomeHostWithRetry(generatedRoomCode);
   });
@@ -2974,6 +3099,8 @@ function updateStageBounds(){
   const guestNameInput = document.getElementById('guest-name-input');
   const guestSwatches = document.getElementById('guest-color-swatches');
   const guestConfirm = document.getElementById('guest-name-confirm');
+  const guestCancel = document.getElementById('guest-name-cancel');
+  const guestError = document.getElementById('guest-name-error');
   const GUEST_PALETTE = ['#5285c2','#6a6ac4','#4a9d74','#b8873f','#c05454','#c2a940','#4b8fa8','#b56894'];
   let guestPickedColor = GUEST_PALETTE[0];
   GUEST_PALETTE.forEach((c, i) => {
@@ -2987,17 +3114,46 @@ function updateStageBounds(){
     });
     guestSwatches.appendChild(sw);
   });
+
   function askGuestIdentity(){
     return new Promise(res => {
-      guestNameInput.value = 'Convidado ' + Math.floor(Math.random()*900 + 100);
+      guestNameInput.value = '';
+      guestNameInput.placeholder = 'Digite seu nome';
+      guestError.style.display = 'none';
+      guestNameInput.style.borderColor = '';
       nameModal.classList.remove('hidden');
       setTimeout(() => guestNameInput.focus(), 60);
+
+      const cleanup = () => {
+        guestConfirm.onclick = null;
+        guestCancel.onclick = null;
+        guestNameInput.onkeydown = null;
+        guestNameInput.oninput = null;
+      };
+
+      guestNameInput.oninput = () => {
+        guestNameInput.style.borderColor = '';
+        guestError.style.display = 'none';
+      };
+      guestNameInput.onkeydown = (e) => { if(e.key === 'Enter') guestConfirm.click(); };
+
       guestConfirm.onclick = () => {
-        const n = (guestNameInput.value || '').trim().slice(0, 20) || 'Convidado';
+        const n = (guestNameInput.value || '').trim().slice(0, 20);
+        if(!n){
+          guestNameInput.style.borderColor = 'var(--err)';
+          guestError.style.display = 'flex';
+          guestNameInput.focus();
+          return;
+        }
+        cleanup();
         nameModal.classList.add('hidden');
         res({ name: n, color: guestPickedColor });
       };
-      guestNameInput.onkeydown = (e) => { if(e.key === 'Enter') guestConfirm.click(); };
+      guestCancel.onclick = () => {
+        cleanup();
+        nameModal.classList.add('hidden');
+        res(null);
+      };
     });
   }
 
@@ -3027,6 +3183,15 @@ function updateStageBounds(){
       finishEntering();
       activateClientUI();
       const ident = await askGuestIdentity();
+      if(!ident){
+        // Cancelou: volta ao gate
+        try{ if(State.peer) State.peer.destroy(); }catch(e){}
+        State.peer = null; State.hostConn = null; State.role = null; State.roomCode = null;
+        gateStatus.className = 'gate-status';
+        gateStatus.textContent = '';
+        document.getElementById('join-block').classList.remove('hidden');
+        return;
+      }
       State.myName = ident.name; State.myColor = ident.color;
       Net.sendToHost({ type: Net.MSG.HELLO, userId: State.myUserId, name: State.myName, color: State.myColor });
       toastMsg('Bem-vindo, ' + State.myName);
@@ -3048,6 +3213,7 @@ function updateStageBounds(){
     if(State.role === 'host') return;
     State.liveVisible = !State.liveVisible;
     if(State.liveVisible){
+      updateLiveEmbedRect();
       liveIframe.src = twitchEmbedUrl('daenil');
       liveEmbed.classList.add('active');
       liveBtn.classList.add('active');
@@ -3165,35 +3331,36 @@ function updateStageBounds(){
     const raw = document.getElementById('text-content').value;
     if(!raw || !raw.trim()){ toastMsg('Digite um texto'); return; }
     const w = 0.26;
-    Actions.createElement('text', {
+    const content = {
       text: raw.slice(0, 600),
       fontSize: parseInt(tss.value, 10),
       color: selTextColor,
       bold: textBold,
       align: textAlign,
       baseW: w,
-    }, { w, ar: 0.13 });
+    };
     document.getElementById('text-content').value = '';
     closeAllFlyouts();
+    UI.enterPlacement('text', content, { w, ar: 0.13 });
   });
 
   document.getElementById('btn-add-yt').addEventListener('click', () => {
     const url = document.getElementById('yt-url').value.trim();
     const info = Utils.extractYouTubeInfo(url);
     if(!info.videoId){ toastMsg('Link inválido'); return; }
-    Actions.createElement('youtube', { videoId: info.videoId, start: info.start, loop: false, variants: {} }, { w: 0.32, ar: 0.5625 });
     document.getElementById('yt-url').value = '';
     closeAllFlyouts();
+    UI.enterPlacement('youtube', { videoId: info.videoId, start: info.start, loop: false, variants: {} }, { w: 0.32, ar: 0.5625 });
   });
 
   document.getElementById('btn-add-html').addEventListener('click', () => {
     const code = document.getElementById('html-content').value;
     if(!code || !code.trim()){ toastMsg('Cole um HTML'); return; }
     const toRemove = [];
-    State.elements.forEach(el => { if(el.type === 'embed' && el.content.kind === 'html' && !el.ghost) toRemove.push(el.id); });
+    State.elements.forEach(el => { if(el.type === 'embed' && el.content.kind === 'html' && !el.ghost && el.userId === State.myUserId) toRemove.push(el.id); });
     toRemove.forEach(id => Actions.removeElement(id));
-    Actions.createElement('embed', { kind:'html', html: code }, { w: 0.36, ar: 0.62 });
     closeAllFlyouts();
+    UI.enterPlacement('embed', { kind:'html', html: code }, { w: 0.36, ar: 0.62 });
   });
 
   const bss = document.getElementById('brush-size');
@@ -3241,11 +3408,22 @@ function updateStageBounds(){
 
   stage.addEventListener('pointerdown', (e) => {
     if(State.role === 'host') return;
+
     const r = stage.getBoundingClientRect();
     const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
     const c = Utils.getCanvasRect();
     const nx = (cp.x - c.x) / c.w;
     const ny = (cp.y - c.y) / c.h;
+
+    // Modo de posicionamento pendente
+    if(State.pendingPlacement){
+      e.preventDefault();
+      e.stopPropagation();
+      const p = State.pendingPlacement;
+      exitPlacement();
+      Actions.createElement(p.type, p.content, Object.assign({}, p.opts, { x: nx, y: ny }));
+      return;
+    }
 
     if(State.showMouseActive) Net.send({ type: Net.MSG.CURSOR_CLICK, userId: State.myUserId });
 
@@ -3284,6 +3462,10 @@ function updateStageBounds(){
     const c = Utils.getCanvasRect();
     const nx = (cp.x - c.x) / c.w;
     const ny = (cp.y - c.y) / c.h;
+
+    // Guarda posição do mouse em coordenadas do canvas (para Ctrl+V)
+    State.mouseStagePos = { x: nx, y: ny };
+
     if(State.activeTool === 'brush' && State.drawing.active && e.buttons === 1){
       Drawing.addLocalPoint(nx, ny);
     } else if(State.activeTool === 'eraser' && State.drawing.active && e.buttons === 1){
@@ -3357,12 +3539,13 @@ function updateStageBounds(){
     }
   });
 
-  return { toast: toastMsg, registerPeer, nameFor, colorFor, updatePeerBadge, setConnState, resetToGate, updateStageBounds };
+  return { toast: toastMsg, registerPeer, nameFor, colorFor, updatePeerBadge, setConnState, resetToGate, updateStageBounds, updateLiveEmbedRect, enterPlacement, exitPlacement };
 })();
 
 /* ---------- Boot ---------- */
 window.addEventListener('resize', Utils.throttle(() => {
   UI.updateStageBounds();
+  UI.updateLiveEmbedRect();
   Drawing.resizeCanvas();
   Elements.repositionAll();
 }, 100));
