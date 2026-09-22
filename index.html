@@ -188,9 +188,8 @@ body.placing .el{cursor:crosshair;}
   position:absolute;transform-origin:center center;touch-action:none;
   will-change:transform;
 }
-
-.el.selected > .el-frame{outline:1.5px solid var(--accent);outline-offset:3px;}
 .el-frame{position:relative;width:100%;height:100%;border-radius:6px;overflow:visible;}
+.el.selected > .el-frame{outline:1.5px solid var(--accent);outline-offset:3px;}
 
 .el-owner-tag{
   position:absolute;top:-20px;left:0;font-size:10px;font-weight:600;color:var(--text-dim);
@@ -205,7 +204,6 @@ body.placing .el{cursor:crosshair;}
   background:transparent;
 }
 .el[data-type="video"] .el-media{background:#000;}
-/* Modo esticado: imagem preenche a caixa (fisicamente esticada) */
 .el.stretched .el-media{object-fit:fill;border-radius:0;}
 
 .el-text{
@@ -385,13 +383,14 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 .prog-slot .ps-key{font-size:17px;font-weight:800;display:block;line-height:1;}
 .prog-slot .ps-count{font-size:9.5px;color:var(--text-dim);margin-top:3px;display:block;}
 
-.tutorial-card{width:600px;max-width:94vw;max-height:80vh;overflow-y:auto;}
+.tutorial-card{width:640px;max-width:94vw;max-height:84vh;overflow-y:auto;}
 .tutorial-card h3{margin:0 0 16px;font-size:15px;font-weight:700;}
 .tut-section{margin-bottom:18px;}
 .tut-section h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;}
 .tut-section p, .tut-section li{font-size:12.5px;color:var(--text);line-height:1.55;margin:0 0 4px;}
 .tut-section ul{margin:0;padding-left:18px;}
 .tut-section li{margin-bottom:3px;}
+.tut-section code{background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;font-size:11.5px;}
 
 #program-banner{
   position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:750;
@@ -502,7 +501,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 <!-- ============ TUTORIAL MODAL ============ -->
 <div id="tutorial-modal" class="hidden">
   <div class="tutorial-card">
-    <h3>Como usar o StreamCanvas</h3>
+    <h3>Como usar o StreamCanvas (Convidados)</h3>
 
     <div class="tut-section">
       <h4>Visão geral</h4>
@@ -510,16 +509,22 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     </div>
 
     <div class="tut-section">
-      <h4>Toolbar (barra lateral esquerda)</h4>
+      <h4>Barra lateral (Toolbar)</h4>
       <ul>
-        <li><b>Imagem / GIF / Vídeo</b> — escolha um arquivo; depois clique na tela onde quer posicionar.</li>
+        <li><b>Imagem</b> — escolha um arquivo; depois clique na tela onde quer posicionar.</li>
+        <li><b>GIF</b> — igual à imagem, aceita GIF animado.</li>
+        <li><b>Vídeo</b> — escolha um arquivo de vídeo (máx 14MB); depois clique na tela.</li>
         <li><b>Texto</b> — texto simples. Duplo-clique no centro para editar direto; duplo-clique nas bordas para o painel completo (fonte, tamanho, cor).</li>
         <li><b>YouTube</b> — cole um link (aceita minutagem, ex: <code>?t=135</code>).</li>
         <li><b>Áudio</b> — vira uma barra com play, progresso e volume. O Host toca o som na live.</li>
         <li><b>HTML</b> — cola código HTML que roda em um painel. Apenas uma instância por vez.</li>
+        <li><b>Mouse</b> — mostra seu cursor e cliques para os outros convidados.</li>
         <li><b>Pincel / Borracha</b> — desenho livre sobre a tela.</li>
-        <li><b>Programar</b> — cria presets de cena acionados por teclas 1-0 (veja abaixo).</li>
-        <li><b>Desfazer / Refazer / Limpar</b> — histórico.</li>
+        <li><b>Ajustar zoom</b> — volta a visão ao normal.</li>
+        <li><b>Programar</b> — cria presets de cena acionados por teclas 1-0.</li>
+        <li><b>Tutorial</b> — abre esta janela.</li>
+        <li><b>Desfazer / Refazer</b> — Ctrl+Z / Ctrl+Y (ou os botões).</li>
+        <li><b>Limpar</b> — remove tudo da tela (pede confirmação).</li>
       </ul>
     </div>
 
@@ -527,11 +532,12 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       <h4>Editando um elemento</h4>
       <p>Clique para selecionar. Arraste para mover. Use os handles:</p>
       <ul>
-        <li>Handle verde (canto inferior esquerdo) — arrastar</li>
-        <li>Handle azul (canto inferior direito) — redimensionar. Segure SHIFT para esticar de verdade (distorce a imagem).</li>
-        <li>Handle roxo (acima) — rotacionar</li>
-        <li>Botão vermelho (canto superior direito) — remover</li>
+        <li><span style="color:var(--ok);font-weight:700;">Handle verde</span> (canto inferior esquerdo) — arrastar</li>
+        <li><span style="color:var(--accent);font-weight:700;">Handle azul</span> (canto inferior direito) — redimensionar. Segure SHIFT para esticar de verdade (distorce a imagem).</li>
+        <li><span style="color:var(--indigo);font-weight:700;">Handle roxo</span> (acima) — rotacionar</li>
+        <li><span style="color:var(--err);font-weight:700;">Botão vermelho</span> (canto superior direito) — remover</li>
       </ul>
+      <p><b>Duplo-clique</b> em qualquer elemento abre o painel de propriedades.</p>
       <p><b>Ctrl+C / Ctrl+V</b> copia e cola o elemento selecionado na posição do mouse.</p>
     </div>
 
@@ -542,7 +548,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 
     <div class="tut-section">
       <h4>Área visível do Host</h4>
-      <p>O quadro pontilhado mostra exatamente o que aparece no Host/OBS — proporção 16:9 fixa, então alinha perfeitamente para todos. Tudo que estiver <b>fora</b> dele fica só na sua tela: uma área de "bastidores" para preparar elementos.</p>
+      <p>O quadro pontilhado mostra exatamente o que aparece no Host/OBS. A proporção é a da janela real do Host, então alinha perfeitamente para todos. Tudo que estiver <b>fora</b> dele fica só na sua tela: uma área de "bastidores" para preparar elementos.</p>
       <p>Use o <b>scroll do mouse</b> para dar zoom e arraste o fundo vazio para navegar. Duplo-clique no fundo ou <b>Ajustar zoom</b> na toolbar para voltar ao normal.</p>
     </div>
 
@@ -555,6 +561,8 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       <h4>Atalhos</h4>
       <ul>
         <li><b>Ctrl+C / Ctrl+V</b> — copiar / colar elemento</li>
+        <li><b>Ctrl+Z</b> — desfazer minha última ação</li>
+        <li><b>Ctrl+Y</b> — refazer minha última ação</li>
         <li><b>C</b> (Host) — copia o código da sala</li>
         <li><b>ESC</b> — cancela modo de posicionamento ou sai da sala</li>
         <li><b>1 a 0</b> — hotkeys e programas</li>
@@ -662,10 +670,10 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       </svg>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" id="tool-undo"><span class="tt">Desfazer</span>
+    <button class="tool-btn" id="tool-undo"><span class="tt">Desfazer (Ctrl+Z)</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-1"/></svg>
     </button>
-    <button class="tool-btn" id="tool-redo"><span class="tt">Refazer</span>
+    <button class="tool-btn" id="tool-redo"><span class="tt">Refazer (Ctrl+Y)</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7l5 5-5 5"/><path d="M20 12H9a5 5 0 0 0 0 10h1"/></svg>
     </button>
     <button class="tool-btn" id="tool-clear"><span class="tt">Limpar</span>
@@ -767,7 +775,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 
 <script>
 /* ==========================================================================
-   STREAMCANVAS
+   STREAMCANVAS — v2
    ========================================================================== */
 
 const ICONS = {
@@ -780,7 +788,8 @@ const ICONS = {
   loop:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>'
 };
 
-const CANVAS_AR = 16 / 9.2;
+/* Fallback apenas até o host enviar a proporção real. */
+const DEFAULT_CANVAS_AR = 16 / 9;
 
 const TEXT_FONTS = ['Segoe UI', 'Arial', 'Helvetica', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New', 'Trebuchet MS', 'Impact'];
 
@@ -864,12 +873,19 @@ const Utils = (() => {
     const s = document.getElementById('stage');
     return { w: s.clientWidth || 1, h: s.clientHeight || 1 };
   }
+  /* Área visível efetiva:
+     - Host: preenche todo o #stage (x=0, y=0, w=clientWidth, h=clientHeight) — sem letterbox.
+     - Cliente: usa a proporção real enviada pelo host (State.hostAR) com fallback. */
   function getCanvasRect(){
     const { w: SW, h: SH } = getStageSize();
+    if(State.role === 'host'){
+      return { x: 0, y: 0, w: SW, h: SH };
+    }
+    const ar = (State.hostAR && State.hostAR > 0) ? State.hostAR : DEFAULT_CANVAS_AR;
     const stageAR = SW / SH;
     let w, h;
-    if(stageAR > CANVAS_AR){ h = SH; w = h * CANVAS_AR; }
-    else { w = SW; h = w / CANVAS_AR; }
+    if(stageAR > ar){ h = SH; w = h * ar; }
+    else { w = SW; h = w / ar; }
     return { x: (SW - w) / 2, y: (SH - h) / 2, w, h };
   }
   function loadImageSize(dataUrl){
@@ -911,6 +927,8 @@ const State = {
   pendingPlacement: null,
   clipboard: null,
   mouseStagePos: { x: 0.5, y: 0.5 },
+  hostAR: null,          // proporção real da janela do host (clientes)
+  _viewportTimer: null,  // throttle de envio de viewport (host)
 };
 State.myColor = Utils.colorForUser(State.myUserId);
 
@@ -923,6 +941,7 @@ const Net = (() => {
     STROKE_POINT:'stroke_point', STROKE_END:'stroke_end', ERASE_POINT:'erase_point', STROKES_SYNC:'strokes_sync',
     CURSOR_MOVE:'cursor_move', CURSOR_HIDE:'cursor_hide', CURSOR_CLICK:'cursor_click',
     YT_SYNC:'yt_sync', MEDIA_SYNC:'media_sync', PEER_LEFT:'peer_left',
+    HOST_VIEWPORT:'host_viewport',
   };
   let onMessage = () => {}, onClientJoined = () => {}, onClientLeft = () => {}, onConnectionState = () => {};
 
@@ -1229,9 +1248,6 @@ const Elements = (() => {
     }
     State.elements.set(fresh.id, fresh);
     renderElement(fresh);
-    if(!opts || !opts.silent){
-      pushHistory({ type:'create', elId: fresh.id, data: JSON.parse(JSON.stringify(fresh)) });
-    }
     return fresh;
   }
   function localUpdate(id, patch, v){
@@ -1256,9 +1272,6 @@ const Elements = (() => {
     MediaCtl.unregister(id);
     const node = domNodes.get(id);
     if(node){ node.remove(); domNodes.delete(id); }
-    if(!opts || !opts.silent){
-      pushHistory({ type:'remove', elId: id, data: JSON.parse(JSON.stringify(el)) });
-    }
     if(State.selectedElId === id) State.selectedElId = null;
     Popup.hideIfTarget(id);
   }
@@ -1270,11 +1283,6 @@ const Elements = (() => {
     domNodes.clear();
     State.selectedElId = null;
     Popup.hide();
-  }
-  function pushHistory(e){
-    State.history.push(e);
-    if(State.history.length > 60) State.history.shift();
-    State.future = [];
   }
 
   function renderElement(el){
@@ -1611,7 +1619,6 @@ const Elements = (() => {
         const txt = node.querySelector('.el-text'); if(!txt) return;
         const r = txt.getBoundingClientRect();
         const lx = e.clientX - r.left, ly = e.clientY - r.top;
-        // Padding do .el-text é 6px top/bottom, 10px left/right.
         const PAD_X = 12, PAD_Y = 8;
         const inPadding = lx < PAD_X || lx > r.width - PAD_X || ly < PAD_Y || ly > r.height - PAD_Y;
         if(inPadding){
@@ -1619,7 +1626,6 @@ const Elements = (() => {
           Popup.show(elId, e.clientX, e.clientY);
           return;
         }
-        // Edição inline (conteúdo).
         e.stopPropagation();
         txt.contentEditable = 'true'; txt.focus();
         const sel = window.getSelection();
@@ -1676,7 +1682,7 @@ const Elements = (() => {
   }
 
   return { createElementObject, localAdd, localUpdate, localRemove, clearAllLocal,
-           renderElement, repositionAll, getStageSize, domNodes, pushHistory, HOTKEYS,
+           renderElement, repositionAll, getStageSize, domNodes, HOTKEYS,
            positionNode, updateNodeContent, finalizeUpdate, throttledMove, throttledResize };
 })();
 
@@ -1766,7 +1772,6 @@ const DragSession = (() => {
       const cy = c.y + el.y * c.h;
       const dx = cp.x - cx, dy = cp.y - cy;
       if(e.shiftKey){
-        // Estica fisicamente: altera w e ar independentes e marca stretch.
         const wPx = Math.max(24, Math.abs(dx) * 2);
         const hPx = Math.max(14, Math.abs(dy) * 2);
         el.w = Utils.clamp(wPx / c.w, 0.02, 2.5);
@@ -1807,7 +1812,7 @@ const DragSession = (() => {
   return { start, cancel, finish, isActive: () => active, getElId: () => elId };
 })();
 
-/* ---------- Drawing ---------- */
+/* ---------- Drawing (com borracha sincronizada e snapshot consistente) ---------- */
 const Drawing = (() => {
   const canvas = document.getElementById('draw-canvas');
   const ctx = canvas.getContext('2d');
@@ -1816,7 +1821,7 @@ const Drawing = (() => {
 
   const scheduleSync = Utils.throttle(() => {
     Net.send({ type: Net.MSG.STROKES_SYNC, strokes: getSnapshot() });
-  }, 320);
+  }, 300);
 
   function resizeCanvas(){
     const s = document.getElementById('stage');
@@ -1906,8 +1911,25 @@ const Drawing = (() => {
     return changed;
   }
   function clearAll(){ strokes = []; cur = null; redrawAll(); }
-  function getSnapshot(){ return strokes.map(s => ({ id: s.id, points: s.points, color: s.color, size: s.size, userId: s.userId })); }
-  function loadSnapshot(snap){ strokes = (snap || []).map(s => ({ id: s.id, points: (s.points||[]).slice(), color: s.color, size: s.size, userId: s.userId })); redrawAll(); }
+  function getSnapshot(){
+    return strokes.map(s => ({
+      id: s.id,
+      points: s.points.map(p => ({ x: p.x, y: p.y })),
+      color: s.color,
+      size: s.size,
+      userId: s.userId
+    }));
+  }
+  function loadSnapshot(snap){
+    strokes = (snap || []).map(s => ({
+      id: s.id,
+      points: (s.points || []).map(p => ({ x: p.x, y: p.y })),
+      color: s.color,
+      size: s.size,
+      userId: s.userId
+    }));
+    redrawAll();
+  }
 
   window.addEventListener('resize', Utils.throttle(resizeCanvas, 120));
   return { resizeCanvas, startLocalStroke, addLocalPoint, endLocalStroke, receiveStrokePoint, eraseAt, clearAll, getSnapshot, loadSnapshot, scheduleSync };
@@ -2001,8 +2023,10 @@ const Actions = (() => {
     return el;
   }
   function removeElement(id){
+    const el = State.elements.get(id);
     Elements.localRemove(id);
     Net.send({ type: Net.MSG.EL_REMOVE, id });
+    if(el) pushHistory({ type:'remove', elId: id, data: JSON.parse(JSON.stringify(el)) });
   }
   function clearScreen(){
     Elements.clearAllLocal();
@@ -2013,14 +2037,33 @@ const Actions = (() => {
   function undo(){
     const e = State.history.pop(); if(!e) return;
     State.future.push(e);
-    if(e.type === 'create'){ Elements.localRemove(e.elId, {silent:true}); Net.send({ type: Net.MSG.EL_REMOVE, id: e.elId }); }
-    else if(e.type === 'remove'){ State.removed.delete(e.elId); Elements.localAdd(JSON.parse(JSON.stringify(e.data)), {silent:true}); Net.send({ type: Net.MSG.EL_CREATE, element: e.data }); }
+    if(e.type === 'create'){
+      Elements.localRemove(e.elId, {silent:true});
+      Net.send({ type: Net.MSG.EL_REMOVE, id: e.elId });
+    }
+    else if(e.type === 'remove'){
+      State.removed.delete(e.elId);
+      Elements.localAdd(JSON.parse(JSON.stringify(e.data)), {silent:true});
+      Net.send({ type: Net.MSG.EL_CREATE, element: e.data });
+    }
   }
   function redo(){
     const e = State.future.pop(); if(!e) return;
     State.history.push(e);
-    if(e.type === 'create'){ State.removed.delete(e.elId); Elements.localAdd(JSON.parse(JSON.stringify(e.data)), {silent:true}); Net.send({ type: Net.MSG.EL_CREATE, element: e.data }); }
-    else if(e.type === 'remove'){ Elements.localRemove(e.elId, {silent:true}); Net.send({ type: Net.MSG.EL_REMOVE, id: e.elId }); }
+    if(e.type === 'create'){
+      State.removed.delete(e.elId);
+      Elements.localAdd(JSON.parse(JSON.stringify(e.data)), {silent:true});
+      Net.send({ type: Net.MSG.EL_CREATE, element: e.data });
+    }
+    else if(e.type === 'remove'){
+      Elements.localRemove(e.elId, {silent:true});
+      Net.send({ type: Net.MSG.EL_REMOVE, id: e.elId });
+    }
+  }
+  function pushHistory(e){
+    State.history.push(e);
+    if(State.history.length > 60) State.history.shift();
+    State.future = [];
   }
 
   async function addImageFromFile(file, pos){
@@ -2119,7 +2162,7 @@ const Actions = (() => {
 
   return { createElement, removeElement, clearScreen, undo, redo,
            addImageFromFile, addGifFromFile, addVideoFromFile, addAudioFromFile, addHtmlFromFile, addFileByType,
-           pasteCloneAt };
+           pasteCloneAt, pushHistory };
 })();
 
 /* ---------- Programar ---------- */
@@ -2191,7 +2234,7 @@ const Programar = (() => {
     const newIds = [];
     const ghosts = [];
     State.elements.forEach(el => {
-      if(el.userId !== State.myUserId) return; // só pega os MEUS
+      if(el.userId !== State.myUserId) return;
       const isGhost = !!el.ghost;
       const isNew = !start.has(el.id);
       if(isGhost || isNew){
@@ -2333,9 +2376,11 @@ function buildFullStateSnapshot(){
     })),
     strokes: Drawing.getSnapshot(),
     version: State.version,
+    hostAR: State.hostAR,
   };
 }
 function applyFullStateSnapshot(msg){
+  if(typeof msg.hostAR === 'number' && msg.hostAR > 0) State.hostAR = msg.hostAR;
   Elements.clearAllLocal();
   Drawing.clearAll();
   State.removed.clear();
@@ -2351,8 +2396,13 @@ function handleMessageAsHost(msg, from, conn){
   switch(msg.type){
     case Net.MSG.HELLO:
       UI.registerPeer(msg.userId || from, msg.name, msg.color);
-      if(conn) conn._userName = msg.name;
-      if(conn) conn.send(buildFullStateSnapshot());
+      if(conn){
+        conn._userName = msg.name;
+        conn.send(buildFullStateSnapshot());
+        /* envia a proporção real do host para o novo cliente */
+        const s = Utils.getStageSize();
+        conn.send({ type: Net.MSG.HOST_VIEWPORT, ar: s.w / s.h });
+      }
       UI.updatePeerBadge();
       break;
     case Net.MSG.EL_CREATE: {
@@ -2397,8 +2447,8 @@ function handleMessageAsHost(msg, from, conn){
       Net.broadcast(msg, from);
       break;
     case Net.MSG.ERASE_POINT: {
-      const c = Drawing.eraseAt(msg.x, msg.y, msg.radius);
-      if(c) Drawing.scheduleSync();
+      Drawing.eraseAt(msg.x, msg.y, msg.radius);
+      Drawing.scheduleSync();
       Net.broadcast(msg, from);
       break;
     }
@@ -2430,7 +2480,19 @@ function handleMessageAsHost(msg, from, conn){
 }
 function handleMessageAsClient(msg, from){
   switch(msg.type){
-    case Net.MSG.STATE_SYNC: applyFullStateSnapshot(msg); break;
+    case Net.MSG.STATE_SYNC:
+      applyFullStateSnapshot(msg);
+      UI.updateStageBounds();
+      Elements.repositionAll();
+      Drawing.redrawAll?.();
+      break;
+    case Net.MSG.HOST_VIEWPORT:
+      if(typeof msg.ar === 'number' && msg.ar > 0){
+        State.hostAR = msg.ar;
+        UI.updateStageBounds();
+        Elements.repositionAll();
+      }
+      break;
     case Net.MSG.EL_CREATE:
       if(msg.element && msg.element.ghost) break;
       State.removed.delete(msg.element.id);
@@ -2446,11 +2508,7 @@ function handleMessageAsClient(msg, from){
     case Net.MSG.CLEAR_ALL: Elements.clearAllLocal(); Drawing.clearAll(); break;
     case Net.MSG.STROKE_POINT: Drawing.receiveStrokePoint(msg); break;
     case Net.MSG.STROKE_END: break;
-    case Net.MSG.ERASE_POINT: {
-      const c = Drawing.eraseAt(msg.x, msg.y, msg.radius);
-      if(c) Drawing.scheduleSync();
-      break;
-    }
+    case Net.MSG.ERASE_POINT: Drawing.eraseAt(msg.x, msg.y, msg.radius); break;
     case Net.MSG.STROKES_SYNC: Drawing.loadSnapshot(msg.strokes); break;
     case Net.MSG.CURSOR_MOVE:
       if(msg.userId !== State.myUserId) RemoteCursors.show(msg.userId, msg.x, msg.y, msg.color, msg.name);
@@ -2914,7 +2972,6 @@ const UI = (() => {
     setTimeout(() => connIndicator.classList.add('faded'), 4000);
   }
 
-  /* ---------- Modo de posicionamento ---------- */
   function enterPlacement(type, content, opts){
     State.pendingPlacement = { type, content, opts: opts || {} };
     document.body.classList.add('placing');
@@ -2963,6 +3020,7 @@ const UI = (() => {
     State._programSessionStart = null;
     State.programs = {};
     State.clipboard = null;
+    State.hostAR = null;
     resetView();
     RemoteCursors.clearAll();
     Elements.domNodes.forEach(n => n.remove()); Elements.domNodes.clear();
@@ -2990,6 +3048,17 @@ const UI = (() => {
     liveBtn.classList.add('hidden');
   }
 
+  /* ---------- Host envia viewport periódico ---------- */
+  function scheduleViewportSend(){
+    if(State.role !== 'host') return;
+    if(State._viewportTimer) return;
+    State._viewportTimer = setInterval(() => {
+      if(State.role !== 'host') return;
+      const s = Utils.getStageSize();
+      Net.broadcastAll({ type: Net.MSG.HOST_VIEWPORT, ar: s.w / s.h });
+    }, 2000);
+  }
+
   window.addEventListener('keydown', (e) => {
     const tag = (e.target && e.target.tagName) || '';
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable);
@@ -3008,7 +3077,6 @@ const UI = (() => {
 
     if(typing) return;
 
-    // Ctrl+C — copiar elemento selecionado
     if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'c' || e.key === 'C')){
       if(State.role && State.role !== 'host' && State.selectedElId){
         const el = State.elements.get(State.selectedElId);
@@ -3023,13 +3091,22 @@ const UI = (() => {
       }
       return;
     }
-    // Ctrl+V — colar na posição do mouse
     if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'v' || e.key === 'V')){
       if(State.role && State.role !== 'host' && State.clipboard){
         e.preventDefault();
         Actions.pasteCloneAt(State.clipboard, State.mouseStagePos.x, State.mouseStagePos.y);
         toastMsg('Colado');
       }
+      return;
+    }
+
+    /* Ctrl+Z / Ctrl+Y — desfazer/refazer a última ação do PRÓPRIO usuário */
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')){
+      if(State.role && State.role !== 'host'){ e.preventDefault(); Actions.undo(); }
+      return;
+    }
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'y' || e.key === 'Y')){
+      if(State.role && State.role !== 'host'){ e.preventDefault(); Actions.redo(); }
       return;
     }
 
@@ -3052,8 +3129,11 @@ const UI = (() => {
         await Net.createHostPeer(roomCode);
         State.role = 'host'; State.roomCode = roomCode;
         initHostHandlers();
+        scheduleViewportSend();
         finishEntering();
         activateHostUI();
+        const s = Utils.getStageSize();
+        State.hostAR = s.w / s.h;
         return true;
       }catch(err){
         if(err && err.message === 'room-taken'){
@@ -3184,7 +3264,6 @@ const UI = (() => {
       activateClientUI();
       const ident = await askGuestIdentity();
       if(!ident){
-        // Cancelou: volta ao gate
         try{ if(State.peer) State.peer.destroy(); }catch(e){}
         State.peer = null; State.hostConn = null; State.role = null; State.roomCode = null;
         gateStatus.className = 'gate-status';
@@ -3415,7 +3494,6 @@ const UI = (() => {
     const nx = (cp.x - c.x) / c.w;
     const ny = (cp.y - c.y) / c.h;
 
-    // Modo de posicionamento pendente
     if(State.pendingPlacement){
       e.preventDefault();
       e.stopPropagation();
@@ -3463,7 +3541,6 @@ const UI = (() => {
     const nx = (cp.x - c.x) / c.w;
     const ny = (cp.y - c.y) / c.h;
 
-    // Guarda posição do mouse em coordenadas do canvas (para Ctrl+V)
     State.mouseStagePos = { x: nx, y: ny };
 
     if(State.activeTool === 'brush' && State.drawing.active && e.buttons === 1){
@@ -3538,6 +3615,19 @@ const UI = (() => {
       await Actions.addFileByType(files[i], pos);
     }
   });
+
+  /* ---------- Host resize: atualiza layout local e envia proporção ---------- */
+  window.addEventListener('resize', Utils.throttle(() => {
+    if(State.role === 'host'){
+      const s = Utils.getStageSize();
+      State.hostAR = s.w / s.h;
+      Net.broadcastAll({ type: Net.MSG.HOST_VIEWPORT, ar: State.hostAR });
+      Elements.repositionAll();
+      Drawing.resizeCanvas();
+      UI.updateStageBounds();
+      UI.updateLiveEmbedRect();
+    }
+  }, 100));
 
   return { toast: toastMsg, registerPeer, nameFor, colorFor, updatePeerBadge, setConnState, resetToGate, updateStageBounds, updateLiveEmbedRect, enterPlacement, exitPlacement };
 })();
