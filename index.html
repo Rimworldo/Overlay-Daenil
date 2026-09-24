@@ -56,6 +56,14 @@ body.host-mode #elements-layer{pointer-events:none !important;}
 body.host-mode .el, body.host-mode .el *{pointer-events:none !important;}
 body.host-mode .el[data-hidden="1"] > .el-frame{opacity:0 !important;}
 
+/* Host: animação suave APENAS em movimento (não em create/remove) */
+body.host-mode .el{
+  transition: transform 0.18s cubic-bezier(.2,.8,.25,1);
+}
+body.host-mode .el.no-anim{
+  transition: none !important;
+}
+
 button{font-family:inherit;}
 .hidden{display:none !important;}
 
@@ -134,8 +142,6 @@ body.host-mode #canvas-view{transform:none !important;}
 #draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 #elements-layer{position:absolute;inset:0;width:100%;height:100%;}
 
-/* Live embed: posicionada por JS sobre o retângulo visível (16:9),
-   dentro do canvas-view (zoom/pan acompanham). Fica abaixo dos elementos. */
 #live-embed{
   position:absolute;
   display:none;
@@ -207,12 +213,33 @@ body.placing .el{cursor:crosshair;}
 .el.stretched .el-media{object-fit:fill;border-radius:0;}
 
 .el-text{
-  width:100%;min-height:100%;display:flex;align-items:center;padding:6px 10px;
+  width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;
+  padding:6px 10px;
   white-space:pre-wrap;word-break:break-word;overflow:visible;line-height:1.3;
   pointer-events:none;
   box-sizing:border-box;
+  text-align:center;
 }
 .el-text[contenteditable="true"]{pointer-events:auto;outline:1.5px dashed var(--accent);outline-offset:2px;background:rgba(0,0,0,0.3);border-radius:6px;}
+
+/* Animação de letras aparecendo / sumindo */
+.el-text .ch{
+  display:inline-block;
+  opacity:0;
+  transform:translateY(4px);
+  animation:charIn .22s ease forwards;
+}
+.el-text .ch.out{
+  animation:charOut .16s ease forwards;
+}
+@keyframes charIn{
+  from{opacity:0;transform:translateY(4px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes charOut{
+  from{opacity:1;transform:translateY(0);}
+  to{opacity:0;transform:translateY(-3px);}
+}
 
 body.program-mode .el,
 body.program-mode .el *{
@@ -226,44 +253,14 @@ body.program-mode .el *{
 .el-embed{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#fff;position:relative;}
 .el-embed iframe{width:100%;height:100%;border:0;display:block;pointer-events:auto;}
 
-.el-video-placeholder{
-  width:100%;height:100%;border-radius:6px;
-  background:#14181d;border:1px solid var(--line-2);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:5px;padding:10px;box-sizing:border-box;
-  color:var(--text);overflow:hidden;position:relative;
-}
-.el-video-placeholder .evp-type{font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;}
-.el-video-placeholder .evp-name{font-size:12.5px;font-weight:600;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
-.el-video-placeholder .evp-owner{font-size:10px;color:var(--text-dim);}
-.el-video-placeholder .evp-btns{display:flex;gap:6px;margin-top:5px;}
-.evp-btn{
-  width:30px;height:30px;border-radius:50%;
-  border:1px solid var(--line-2);background:var(--panel-3);
-  color:var(--text);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-}
-.evp-btn:hover{background:#2a2f36;}
-.evp-btn svg{width:13px;height:13px;}
+/* Vídeo nativo */
+.el-video-native{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;}
+.el-video-native video{width:100%;height:100%;display:block;background:#000;border-radius:6px;}
 
-.el-audio-bar{
-  width:100%;height:100%;display:flex;align-items:center;gap:8px;
-  padding:0 10px;box-sizing:border-box;background:#14181d;
-  border:1px solid var(--line-2);border-radius:8px;
-  color:var(--text);overflow:hidden;
-}
-.el-audio-bar .eab-btn{width:30px;height:30px;flex:none;border-radius:50%;border:none;cursor:pointer;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;}
-.el-audio-bar .eab-btn:hover{background:var(--accent-hover);}
-.el-audio-bar .eab-btn svg{width:13px;height:13px;}
-.el-audio-bar .eab-info{min-width:0;flex:0 1 auto;max-width:34%;}
-.el-audio-bar .eab-name{font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.el-audio-bar .eab-sub{font-size:9.5px;color:var(--text-dim);}
-.el-audio-bar .eab-progress{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,0.12);overflow:hidden;cursor:pointer;position:relative;}
-.el-audio-bar .eab-progress > i{display:block;height:100%;width:0%;background:var(--accent);}
-.el-audio-bar .eab-time{font-size:10px;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:none;}
-.el-audio-bar .eab-vol{-webkit-appearance:none;appearance:none;width:60px;height:4px;border-radius:4px;background:rgba(255,255,255,0.12);outline:none;flex:none;}
-.el-audio-bar .eab-vol::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer;}
-.el-audio-bar .eab-vol::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
+/* Áudio nativo */
+.el-audio-native{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:4px 8px;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;}
+.el-audio-native audio{width:100%;height:32px;outline:none;}
+.el[data-type="audio"].host-hidden > .el-frame{opacity:0;}
 
 .el-media-controls{position:absolute;bottom:8px;left:8px;z-index:5;display:flex;gap:6px;pointer-events:auto;}
 .mc-btn{
@@ -346,7 +343,7 @@ body.host-mode .el[data-hidden="1"]{visibility:hidden;}
 .align-btn svg{width:13px;height:13px;}
 .toggle-btn{padding:7px 11px;border-radius:5px;border:1px solid var(--line-2);background:transparent;color:var(--text-dim);cursor:pointer;font-weight:700;font-size:12px;}
 .toggle-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.swatches{display:flex;flex-wrap:wrap;gap:5px;}
+.swatches{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
 .swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.10);}
 .swatch.active{border-color:#fff;}
 input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:4px;background:var(--line-2);outline:none;}
@@ -356,6 +353,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 .fy-hint{font-size:10.5px;color:var(--text-mute);margin-top:6px;line-height:1.4;}
 .color-input-wrap{display:flex;align-items:center;gap:6px;}
 .color-input-wrap input[type="color"]{width:30px;height:30px;border-radius:5px;border:1px solid var(--line-2);background:none;cursor:pointer;padding:0;}
+.free-color{width:28px;height:28px;border-radius:6px;border:1px solid var(--line-2);background:none;cursor:pointer;padding:0;flex:none;}
 
 /* ================= MODAIS ================= */
 #name-modal, #programar-modal, #tutorial-modal{
@@ -433,7 +431,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 .ep-hotkey:hover{border-color:var(--accent);}
 .ep-hotkey.has-asset{background:var(--accent-soft);border-color:var(--accent);color:var(--text);}
 .ep-hotkey.active-key{background:var(--accent);color:#fff;border-color:var(--accent);}
-.ep-colors{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.ep-colors{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;align-items:center;}
 .ep-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.10);}
 .ep-swatch.active{border-color:#fff;}
 .ep-delete{width:100%;margin-top:10px;padding:9px;border-radius:5px;border:none;background:rgba(192,84,84,0.16);color:#e08f8f;font-size:12px;font-weight:600;cursor:pointer;}
@@ -513,13 +511,13 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       <ul>
         <li><b>Imagem</b> — escolha um arquivo; depois clique na tela onde quer posicionar.</li>
         <li><b>GIF</b> — igual à imagem, aceita GIF animado.</li>
-        <li><b>Vídeo</b> — escolha um arquivo de vídeo (máx 14MB); depois clique na tela.</li>
-        <li><b>Texto</b> — texto simples. Duplo-clique no centro para editar direto; duplo-clique nas bordas para o painel completo (fonte, tamanho, cor).</li>
+        <li><b>Vídeo</b> — escolha um arquivo de vídeo (máx 14MB). Você vê o vídeo real com player do navegador; o Host toca só o som.</li>
+        <li><b>Texto</b> — texto simples. Duplo-clique no centro para editar direto; duplo-clique nas bordas para o painel completo (fonte, cor).</li>
         <li><b>YouTube</b> — cole um link (aceita minutagem, ex: <code>?t=135</code>).</li>
-        <li><b>Áudio</b> — vira uma barra com play, progresso e volume. O Host toca o som na live.</li>
+        <li><b>Áudio</b> — player nativo do navegador com play, progresso e volume, pra você e pro Host.</li>
         <li><b>HTML</b> — cola código HTML que roda em um painel. Apenas uma instância por vez.</li>
-        <li><b>Mouse</b> — mostra seu cursor e cliques para os outros convidados.</li>
-        <li><b>Pincel / Borracha</b> — desenho livre sobre a tela.</li>
+        <li><b>Mouse</b> — mostra seu cursor e cliques para os outros convidados. Some automaticamente se você sair.</li>
+        <li><b>Pincel / Borracha</b> — desenho livre sobre a tela (também fora da área do Host).</li>
         <li><b>Ajustar zoom</b> — volta a visão ao normal.</li>
         <li><b>Programar</b> — cria presets de cena acionados por teclas 1-0.</li>
         <li><b>Tutorial</b> — abre esta janela.</li>
@@ -537,7 +535,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
         <li><span style="color:var(--indigo);font-weight:700;">Handle roxo</span> (acima) — rotacionar</li>
         <li><span style="color:var(--err);font-weight:700;">Botão vermelho</span> (canto superior direito) — remover</li>
       </ul>
-      <p><b>Duplo-clique</b> em qualquer elemento abre o painel de propriedades.</p>
+      <p><b>Duplo-clique</b> em qualquer elemento abre o painel de propriedades (play/pause, volume, posição, loop, ocultar, hotkeys, etc).</p>
       <p><b>Ctrl+C / Ctrl+V</b> copia e cola o elemento selecionado na posição do mouse.</p>
     </div>
 
@@ -703,11 +701,11 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <h4>Texto <button class="fy-close" data-close>Fechar</button></h4>
     <label class="field-label">Conteúdo</label>
     <textarea class="fy-textarea" id="text-content" placeholder="Digite"></textarea>
-    <label class="field-label">Tamanho</label>
-    <input type="range" id="text-size" min="12" max="96" value="28">
-    <div class="range-val" id="text-size-val">28px</div>
     <label class="field-label">Cor</label>
-    <div class="swatches" id="text-color-swatches"></div>
+    <div class="color-input-wrap">
+      <input type="color" id="text-color-free" class="free-color" value="#ffffff">
+      <div class="swatches" id="text-color-swatches" style="flex:1;"></div>
+    </div>
     <label class="field-label">Estilo</label>
     <div class="fy-row">
       <button class="toggle-btn" id="text-bold">B</button>
@@ -731,7 +729,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
     <h4>Áudio <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-audio-file">Escolher arquivo</label>
     <input type="file" id="input-audio-file" accept="audio/*" class="hidden">
-    <div class="fy-hint">Depois clique na tela para posicionar.</div>
+    <div class="fy-hint">Player nativo do navegador (você e o Host).</div>
   </div>
   <div class="flyout" id="flyout-brush">
     <h4>Pincel <button class="fy-close" data-close>Fechar</button></h4>
@@ -743,7 +741,7 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
       <input type="color" id="brush-color" value="#5285c2">
       <div class="swatches" id="brush-color-swatches" style="flex:1;"></div>
     </div>
-    <div class="fy-hint">Clique no botão de novo para desativar.</div>
+    <div class="fy-hint">Clique no botão de novo para desativar. Desenhe também fora da área do Host.</div>
   </div>
   <div class="flyout" id="flyout-eraser">
     <h4>Borracha <button class="fy-close" data-close>Fechar</button></h4>
@@ -775,7 +773,10 @@ input[type="range"]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;b
 
 <script>
 /* ==========================================================================
-   STREAMCANVAS — v2
+   STREAMCANVAS — v3.1
+   - Tick de mídia: 5s (era 2s)
+   - Texto com caixa justa (fitTextBox) e tamanho base fixo 28px
+   - Volume inicial padrão: 15%
    ========================================================================== */
 
 const ICONS = {
@@ -788,10 +789,11 @@ const ICONS = {
   loop:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>'
 };
 
-/* Fallback apenas até o host enviar a proporção real. */
 const DEFAULT_CANVAS_AR = 16 / 9;
-
 const TEXT_FONTS = ['Segoe UI', 'Arial', 'Helvetica', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New', 'Trebuchet MS', 'Impact'];
+const DEFAULT_VOLUME = 0.15;
+const TEXT_BASE_FONT_SIZE = 28;
+const TEXT_BASE_W = 0.26;
 
 /* ---------- Utils ---------- */
 const Utils = (() => {
@@ -873,9 +875,6 @@ const Utils = (() => {
     const s = document.getElementById('stage');
     return { w: s.clientWidth || 1, h: s.clientHeight || 1 };
   }
-  /* Área visível efetiva:
-     - Host: preenche todo o #stage (x=0, y=0, w=clientWidth, h=clientHeight) — sem letterbox.
-     - Cliente: usa a proporção real enviada pelo host (State.hostAR) com fallback. */
   function getCanvasRect(){
     const { w: SW, h: SH } = getStageSize();
     if(State.role === 'host'){
@@ -896,9 +895,32 @@ const Utils = (() => {
       img.src = dataUrl;
     });
   }
+  // Measure text box height given width in canvas px and base font size 28
+  function measureTextBox(text, cssWidthPx, fontSize, fontWeight, fontFamily, align){
+    const dummy = document.createElement('div');
+    dummy.style.position = 'absolute';
+    dummy.style.visibility = 'hidden';
+    dummy.style.left = '-9999px';
+    dummy.style.top = '0';
+    dummy.style.width = cssWidthPx + 'px';
+    dummy.style.padding = '6px 10px';
+    dummy.style.boxSizing = 'border-box';
+    dummy.style.whiteSpace = 'pre-wrap';
+    dummy.style.wordBreak = 'break-word';
+    dummy.style.lineHeight = '1.3';
+    dummy.style.fontSize = fontSize + 'px';
+    dummy.style.fontWeight = fontWeight || '500';
+    dummy.style.fontFamily = fontFamily || "'Segoe UI', sans-serif";
+    dummy.style.textAlign = align || 'center';
+    dummy.textContent = text || ' ';
+    document.body.appendChild(dummy);
+    const h = dummy.offsetHeight || 1;
+    document.body.removeChild(dummy);
+    return h;
+  }
   return { uid, randomRoomCode, clamp, throttle, escapeAttr, extractYouTubeInfo,
            isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay,
-           toCanvasPoint, getStageSize, getCanvasRect, loadImageSize };
+           toCanvasPoint, getStageSize, getCanvasRect, loadImageSize, measureTextBox };
 })();
 
 /* ---------- State ---------- */
@@ -927,8 +949,8 @@ const State = {
   pendingPlacement: null,
   clipboard: null,
   mouseStagePos: { x: 0.5, y: 0.5 },
-  hostAR: null,          // proporção real da janela do host (clientes)
-  _viewportTimer: null,  // throttle de envio de viewport (host)
+  hostAR: null,
+  _viewportTimer: null,
 };
 State.myColor = Utils.colorForUser(State.myUserId);
 
@@ -940,7 +962,8 @@ const Net = (() => {
     CLEAR_ALL:'clear_all',
     STROKE_POINT:'stroke_point', STROKE_END:'stroke_end', ERASE_POINT:'erase_point', STROKES_SYNC:'strokes_sync',
     CURSOR_MOVE:'cursor_move', CURSOR_HIDE:'cursor_hide', CURSOR_CLICK:'cursor_click',
-    YT_SYNC:'yt_sync', MEDIA_SYNC:'media_sync', PEER_LEFT:'peer_left',
+    YT_SYNC:'yt_sync', MEDIA_SYNC:'media_sync', MEDIA_TICK:'media_tick',
+    PEER_LEFT:'peer_left',
     HOST_VIEWPORT:'host_viewport',
   };
   let onMessage = () => {}, onClientJoined = () => {}, onClientLeft = () => {}, onConnectionState = () => {};
@@ -1030,11 +1053,18 @@ const Net = (() => {
   return { MSG, init, createHostPeer, connectToHost, broadcast, broadcastAll, sendToHost, send };
 })();
 
-/* ---------- MediaCtl ---------- */
+/* ---------- MediaCtl (host master) ---------- */
 const MediaCtl = (() => {
   const map = new Map();
   const uiMap = new Map();
-  function register(id, el, ui){ map.set(id, el); if(ui) uiMap.set(id, ui); }
+  function register(id, el, ui){
+    map.set(id, el);
+    if(ui) uiMap.set(id, ui);
+    if(el){
+      if(typeof el.volume === 'number') el.volume = DEFAULT_VOLUME;
+      if('muted' in el) el.muted = false;
+    }
+  }
   function unregister(id){ map.delete(id); uiMap.delete(id); }
   function get(id){ return map.get(id); }
 
@@ -1054,10 +1084,10 @@ const MediaCtl = (() => {
     }
     if(m.paused){
       Utils.tryPlay(m);
-      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'play', time: m.currentTime });
+      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'play', time: m.currentTime, volume: m.volume, muted: m.muted });
     } else {
       m.pause();
-      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'pause', time: m.currentTime });
+      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'pause', time: m.currentTime, volume: m.volume, muted: m.muted });
     }
     paint(id);
   }
@@ -1065,7 +1095,7 @@ const MediaCtl = (() => {
   function toggleMute(id){
     const m = map.get(id); if(!m) return;
     m.muted = !m.muted;
-    Net.send({ type: Net.MSG.MEDIA_SYNC, id, action: m.muted ? 'mute' : 'unmute' });
+    Net.send({ type: Net.MSG.MEDIA_SYNC, id, action: m.muted ? 'mute' : 'unmute', time: m.currentTime, volume: m.volume, muted: m.muted });
     paint(id);
   }
 
@@ -1073,7 +1103,7 @@ const MediaCtl = (() => {
     const m = map.get(id); if(!m || !isFinite(m.duration)) return;
     const t = Utils.clamp(ratio, 0, 1) * m.duration;
     try{ m.currentTime = t; }catch(e){}
-    Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'seek', time: t });
+    Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'seek', time: t, volume: m.volume, muted: m.muted });
     paint(id);
   }
 
@@ -1082,15 +1112,18 @@ const MediaCtl = (() => {
     m.volume = Utils.clamp(v, 0, 1);
     if(m.volume > 0 && m.muted) m.muted = false;
     if(m.volume === 0) m.muted = true;
+    Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'volume', time: m.currentTime, volume: m.volume, muted: m.muted });
     paint(id);
   }
 
-  function applyRemote(id, action, time){
+  function applyRemote(id, action, time, volume, muted){
     const m = map.get(id); if(!m) return;
     try{
       if(typeof time === 'number' && isFinite(time)){
-        if(action === 'seek' || Math.abs(m.currentTime - time) > 0.45) m.currentTime = time;
+        if(action === 'seek' || Math.abs(m.currentTime - time) > 0.35) m.currentTime = time;
       }
+      if(typeof volume === 'number' && isFinite(volume)) m.volume = Utils.clamp(volume, 0, 1);
+      if(typeof muted === 'boolean') m.muted = muted;
       if(action === 'play'){ if(m.ended){ try{ m.currentTime = 0; }catch(e){} } Utils.tryPlay(m); }
       else if(action === 'pause') m.pause();
       else if(action === 'mute') m.muted = true;
@@ -1099,7 +1132,20 @@ const MediaCtl = (() => {
     paint(id);
   }
 
-  return { register, unregister, get, paint, localToggle, toggleMute, localSeek, setVolume, applyRemote };
+  function getSnapshot(id){
+    const m = map.get(id);
+    if(!m) return null;
+    return {
+      id,
+      time: m.currentTime || 0,
+      duration: m.duration || 0,
+      paused: !!m.paused,
+      volume: m.volume,
+      muted: !!m.muted
+    };
+  }
+
+  return { register, unregister, get, paint, localToggle, toggleMute, localSeek, setVolume, applyRemote, getSnapshot };
 })();
 
 /* ---------- YouTubeSync ---------- */
@@ -1118,30 +1164,55 @@ const YouTubeSync = (() => {
     });
     return apiPromise;
   }
-  function embedUrl(videoId, start, loop, isHost){
+
+  function computeOrigin(){
+    return (location.origin && /^https?:/.test(location.origin)) ? location.origin : null;
+  }
+
+  function embedUrl(videoId, start, loop, isHost, origin){
     let url = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&controls=0&modestbranding=1&iv_load_policy=3&fs=0&disablekb=1`;
+    if(origin) url += `&origin=${encodeURIComponent(origin)}`;
     url += isHost ? '&mute=0' : '&mute=1';
     if(start && start > 0) url += `&start=${start}`;
     if(loop) url += `&loop=1&playlist=${videoId}`;
-    if(location.origin && /^https?:/.test(location.origin)) url += `&origin=${encodeURIComponent(location.origin)}`;
     return url;
   }
+
   function attach(elId, iframe, videoId, start, loop){
     loadApi().then(() => {
       if(!document.body.contains(iframe)) return;
       const entry = players.get(elId);
       if(entry){ try{ entry.player.destroy(); }catch(e){} players.delete(elId); }
       const isHost = State.role === 'host';
-      iframe.src = embedUrl(videoId, start, loop, isHost);
+      const origin = computeOrigin();
+
+      try{ iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); }catch(e){}
+      iframe.src = embedUrl(videoId, start, loop, isHost, origin);
+
       const player = new YT.Player(iframe, {
         events: {
           onReady: (e) => {
             try{
-              if(isHost){ e.target.unMute(); e.target.setVolume(100); }
-              else { e.target.mute(); }
+              if(isHost){ e.target.unMute(); e.target.setVolume(Math.round(DEFAULT_VOLUME * 100)); }
+              else { e.target.mute(); e.target.setVolume(0); }
               if(start && start > 0) e.target.seekTo(start, true);
               e.target.playVideo();
             }catch(err){}
+          },
+          onError: (e) => {
+            if(e.data === 153 || e.data === 150 || e.data === 101){
+              try{
+                if(!iframe.dataset.fallback){
+                  iframe.dataset.fallback = '1';
+                  const fbOrigin = computeOrigin();
+                  const fbUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3` +
+                    (fbOrigin ? `&origin=${encodeURIComponent(fbOrigin)}` : '') +
+                    (isHost ? '' : '&mute=1') + (start ? '&start=' + start : '') +
+                    (loop ? `&loop=1&playlist=${videoId}` : '');
+                  iframe.src = fbUrl;
+                }
+              }catch(err){}
+            }
           },
           onStateChange: (e) => {
             if(!players.get(elId)) return;
@@ -1171,22 +1242,88 @@ const YouTubeSync = (() => {
     if(playing){ cmd(id, 'pauseVideo'); Net.send({ type: Net.MSG.YT_SYNC, id, action:'pause' }); }
     else { cmd(id, 'playVideo'); Net.send({ type: Net.MSG.YT_SYNC, id, action:'play' }); }
   }
-  function applyRemote(id, action){
+  function applyRemote(id, action, time, volume){
     if(action === 'play') cmd(id, 'playVideo');
     else if(action === 'pause') cmd(id, 'pauseVideo');
-    else if(action === 'unmute'){ cmd(id, 'unMute'); cmd(id, 'setVolume', [100]); }
+    else if(action === 'unmute'){ cmd(id, 'unMute'); cmd(id, 'setVolume', [Math.round(DEFAULT_VOLUME * 100)]); }
+    else if(action === 'mute') cmd(id, 'mute');
+    if(typeof time === 'number' && isFinite(time)) cmd(id, 'seekTo', [time, true]);
+    if(typeof volume === 'number' && isFinite(volume)){
+      cmd(id, 'setVolume', [Math.round(volume * 100)]);
+      if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
+    }
   }
-  function seek(id, time){ cmd(id, 'seekTo', [time, true]); }
-  function setVolume(id, v){ cmd(id, 'setVolume', [Math.round(v * 100)]); if(v > 0) cmd(id, 'unMute'); else cmd(id, 'mute'); }
+  function seek(id, time){ cmd(id, 'seekTo', [time, true]); Net.send({ type: Net.MSG.YT_SYNC, id, action:'seek', time }); }
+  function setVolume(id, v){
+    cmd(id, 'setVolume', [Math.round(v * 100)]);
+    if(v > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
+    Net.send({ type: Net.MSG.YT_SYNC, id, action:'volume', volume: v });
+  }
   function getTime(id){
-    const ent = players.get(id); if(!ent) return { time: 0, dur: 0 };
-    try{ return { time: ent.player.getCurrentTime() || 0, dur: ent.player.getDuration() || 0 }; }catch(e){ return { time: 0, dur: 0 }; }
+    const ent = players.get(id); if(!ent) return { time: 0, dur: 0, paused: true };
+    try{
+      const st = ent.player.getPlayerState();
+      return {
+        time: ent.player.getCurrentTime() || 0,
+        dur: ent.player.getDuration() || 0,
+        paused: st !== YT.PlayerState.PLAYING
+      };
+    }catch(e){ return { time: 0, dur: 0, paused: true }; }
   }
   function destroy(id){
     const ent = players.get(id);
     if(ent){ try{ ent.player.destroy(); }catch(e){} players.delete(id); }
   }
   return { attach, togglePlay, applyRemote, seek, setVolume, getTime, destroy };
+})();
+
+/* ---------- MediaTick (host master a cada 5s) ---------- */
+const MediaTick = (() => {
+  let timer = null;
+  function collect(){
+    const items = [];
+    State.elements.forEach(el => {
+      if(el.type === 'video' || el.type === 'audio'){
+        const snap = MediaCtl.getSnapshot(el.id);
+        if(snap) items.push({ kind: el.type, ...snap });
+      } else if(el.type === 'youtube'){
+        const info = YouTubeSync.getTime(el.id);
+        items.push({
+          kind: 'youtube',
+          id: el.id,
+          time: info.time,
+          duration: info.dur,
+          paused: info.paused,
+          volume: DEFAULT_VOLUME,
+          muted: State.role !== 'host'
+        });
+      }
+    });
+    return items;
+  }
+  function start(){
+    stop();
+    if(State.role !== 'host') return;
+    timer = setInterval(() => {
+      if(State.role !== 'host') return;
+      const items = collect();
+      if(items.length) Net.broadcastAll({ type: Net.MSG.MEDIA_TICK, items });
+    }, 5000);
+  }
+  function stop(){
+    if(timer){ clearInterval(timer); timer = null; }
+  }
+  function applyTick(items){
+    if(!items || State.role === 'host') return;
+    items.forEach(it => {
+      if(it.kind === 'youtube'){
+        YouTubeSync.applyRemote(it.id, it.paused ? 'pause' : 'play', it.time, it.volume);
+      } else {
+        MediaCtl.applyRemote(it.id, it.paused ? 'pause' : 'play', it.time, it.volume, it.muted);
+      }
+    });
+  }
+  return { start, stop, applyTick };
 })();
 
 /* ---------- Elements ---------- */
@@ -1246,8 +1383,13 @@ const Elements = (() => {
     if(State.programMode && !fresh.ghost && (!opts || opts.silent !== true)){
       fresh.ghost = true;
     }
+    // Text: ensure baseW and fontSize
+    if(fresh.type === 'text'){
+      if(fresh.content.fontSize == null) fresh.content.fontSize = TEXT_BASE_FONT_SIZE;
+      if(fresh.content.baseW == null) fresh.content.baseW = TEXT_BASE_W;
+    }
     State.elements.set(fresh.id, fresh);
-    renderElement(fresh);
+    renderElement(fresh, { instant: true });
     return fresh;
   }
   function localUpdate(id, patch, v){
@@ -1257,6 +1399,7 @@ const Elements = (() => {
     if(p.content){ el.content = Object.assign({}, el.content, p.content); delete p.content; }
     Object.assign(el, p);
     if(typeof v === 'number') el.v = v;
+    if(el.type === 'text') fitTextBox(el);
     renderElement(el);
     Popup.refresh(el);
   }
@@ -1271,7 +1414,11 @@ const Elements = (() => {
     YouTubeSync.destroy(id);
     MediaCtl.unregister(id);
     const node = domNodes.get(id);
-    if(node){ node.remove(); domNodes.delete(id); }
+    if(node){
+      if(State.role === 'host') node.classList.add('no-anim');
+      node.remove();
+      domNodes.delete(id);
+    }
     if(State.selectedElId === id) State.selectedElId = null;
     Popup.hideIfTarget(id);
   }
@@ -1285,10 +1432,17 @@ const Elements = (() => {
     Popup.hide();
   }
 
-  function renderElement(el){
+  function renderElement(el, opts){
+    opts = opts || {};
     let node = domNodes.get(el.id);
     if(!node){ node = buildNode(el); domNodes.set(el.id, node); layer.appendChild(node); }
-    positionNode(node, el);
+    if(opts.instant && State.role === 'host'){
+      node.classList.add('no-anim');
+      positionNode(node, el);
+      requestAnimationFrame(() => { try{ node.classList.remove('no-anim'); }catch(e){} });
+    } else {
+      positionNode(node, el);
+    }
     updateNodeContent(node, el);
   }
 
@@ -1323,6 +1477,7 @@ const Elements = (() => {
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('frameborder', '0');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       wrap.appendChild(iframe);
       if(State.role !== 'host'){
         const ctr = document.createElement('div');
@@ -1335,97 +1490,27 @@ const Elements = (() => {
       }
       frame.appendChild(wrap);
     } else if(el.type === 'video'){
-      if(State.role === 'host'){
-        const v = document.createElement('video');
-        v.className = 'el-media';
-        v.playsInline = true; v.preload = 'metadata';
-        v.setAttribute('playsinline', '');
-        frame.appendChild(v);
-      } else {
-        const ph = document.createElement('div');
-        ph.className = 'el-video-placeholder';
-        const ty = document.createElement('div'); ty.className = 'evp-type'; ty.textContent = 'Vídeo';
-        const nm = document.createElement('div'); nm.className = 'evp-name';
-        nm.textContent = (el.content && el.content.name) ? el.content.name : 'vídeo';
-        const ow = document.createElement('div'); ow.className = 'evp-owner';
-        ow.textContent = el.userId === State.myUserId ? 'adicionado por você' : ('por ' + (el.userName || 'convidado'));
-        const bs = document.createElement('div'); bs.className = 'evp-btns';
-        const pb = document.createElement('button');
-        pb.className = 'evp-btn evp-btn-play'; pb.type = 'button';
-        pb.innerHTML = (el.content && el.content.playing) ? ICONS.pause : ICONS.play;
-        pb.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          const next = !(el.content && el.content.playing);
-          el.content.playing = next;
-          Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: next } } });
-          Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: next ? 'play' : 'pause' });
-        });
-        const mb = document.createElement('button');
-        mb.className = 'evp-btn evp-btn-mute'; mb.type = 'button';
-        mb.innerHTML = (el.content && el.content.muted) ? ICONS.mute : ICONS.unmute;
-        mb.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          const next = !(el.content && el.content.muted);
-          el.content.muted = next;
-          Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { muted: next } } });
-          Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: next ? 'mute' : 'unmute' });
-        });
-        bs.appendChild(pb); bs.appendChild(mb);
-        ph.appendChild(ty); ph.appendChild(nm); ph.appendChild(ow); ph.appendChild(bs);
-        frame.appendChild(ph);
-      }
+      const wrap = document.createElement('div');
+      wrap.className = 'el-video-native';
+      const v = document.createElement('video');
+      v.className = 'el-media';
+      v.playsInline = true;
+      v.preload = 'metadata';
+      v.controls = (State.role !== 'host');
+      v.volume = DEFAULT_VOLUME;
+      v.setAttribute('playsinline', '');
+      wrap.appendChild(v);
+      frame.appendChild(wrap);
     } else if(el.type === 'audio'){
-      if(State.role === 'host'){
-        const audio = document.createElement('audio');
-        audio.style.display = 'none';
-        audio.preload = 'metadata';
-        frame.appendChild(audio);
-        frame.style.opacity = '0';
-        frame.style.pointerEvents = 'none';
-      } else {
-        const bar = document.createElement('div');
-        bar.className = 'el-audio-bar';
-        const btn = document.createElement('button');
-        btn.className = 'eab-btn'; btn.type = 'button';
-        btn.innerHTML = (el.content && el.content.playing) ? ICONS.pause : ICONS.play;
-        btn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          const next = !(el.content && el.content.playing);
-          el.content.playing = next;
-          Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: next } } });
-          Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: next ? 'play' : 'pause' });
-        });
-        const info = document.createElement('div');
-        info.className = 'eab-info';
-        const nm = document.createElement('div'); nm.className = 'eab-name';
-        nm.textContent = (el.content && el.content.name) ? el.content.name : 'áudio';
-        const sb = document.createElement('div'); sb.className = 'eab-sub'; sb.textContent = 'sincronizado';
-        info.appendChild(nm); info.appendChild(sb);
-        const prog = document.createElement('div');
-        prog.className = 'eab-progress';
-        const fill = document.createElement('i');
-        prog.appendChild(fill);
-        prog.addEventListener('pointerdown', (ev) => {
-          ev.stopPropagation();
-          const r = prog.getBoundingClientRect();
-          const ratio = (ev.clientX - r.left) / r.width;
-          Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: 'seek', time: ratio });
-        });
-        const time = document.createElement('span'); time.className = 'eab-time'; time.textContent = '0:00 / 0:00';
-        const vol = document.createElement('input');
-        vol.type = 'range'; vol.className = 'eab-vol'; vol.min = '0'; vol.max = '100'; vol.value = '100';
-        vol.addEventListener('pointerdown', (e) => e.stopPropagation());
-        vol.addEventListener('input', (e) => {
-          e.stopPropagation();
-          if(el._audioEl) el._audioEl.volume = parseInt(e.target.value, 10) / 100;
-        });
-        bar.appendChild(btn); bar.appendChild(info); bar.appendChild(prog); bar.appendChild(time); bar.appendChild(vol);
-        frame.appendChild(bar);
-        const audio = document.createElement('audio');
-        audio.style.display = 'none';
-        audio.preload = 'metadata';
-        frame.appendChild(audio);
-      }
+      const wrap = document.createElement('div');
+      wrap.className = 'el-audio-native';
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.preload = 'metadata';
+      audio.volume = DEFAULT_VOLUME;
+      wrap.appendChild(audio);
+      frame.appendChild(wrap);
+      if(State.role === 'host') node.classList.add('host-hidden');
     } else if(el.type === 'embed'){
       const wrap = document.createElement('div');
       wrap.className = 'el-embed';
@@ -1438,10 +1523,50 @@ const Elements = (() => {
     const handle = document.createElement('div'); handle.className = 'el-handle'; frame.appendChild(handle);
     const rot = document.createElement('div'); rot.className = 'el-rotate-handle'; frame.appendChild(rot);
     const drag = document.createElement('div'); drag.className = 'el-drag-handle'; frame.appendChild(drag);
-    const del = document.createElement('div'); del.className = 'el-del-handle'; del.textContent = 'x'; frame.appendChild(del);
+    const del = document.createElement('div'); del.className = 'el-del-handle'; del.textContent = '×'; frame.appendChild(del);
 
     attachInteractions(node, el.id, handle, rot, drag, del);
     return node;
+  }
+
+  function animateTextContent(txt, newText){
+    const old = txt.dataset.lastText || '';
+    if(old === newText) return;
+    txt.dataset.lastText = newText;
+
+    const maxLen = Math.max(old.length, newText.length);
+    let html = '';
+    for(let i = 0; i < maxLen; i++){
+      const c = newText[i];
+      if(c == null){
+        html += `<span class="ch out" style="animation-delay:${Math.min(i*12,180)}ms">${Utils.escapeAttr(old[i]||'')}</span>`;
+      } else if(old[i] !== c){
+        html += `<span class="ch" style="animation-delay:${Math.min(i*14,220)}ms">${Utils.escapeAttr(c)}</span>`;
+      } else {
+        html += `<span class="ch" style="animation:none;opacity:1;transform:none">${Utils.escapeAttr(c)}</span>`;
+      }
+    }
+    if(Math.abs(newText.length - old.length) > 40 || newText.length > 120){
+      txt.textContent = newText;
+    } else {
+      txt.innerHTML = html || '';
+    }
+  }
+
+  function fitTextBox(el){
+    if(el.type !== 'text') return;
+    const c = Utils.getCanvasRect();
+    const pxW = Math.max(24, el.w * c.w);
+    const text = el.content.text || ' ';
+    const fontSize = TEXT_BASE_FONT_SIZE;
+    const weight = el.content.bold ? '700' : '500';
+    const family = el.content.fontFamily || "'Segoe UI', sans-serif";
+    const align = el.content.align || 'center';
+    const hPx = Utils.measureTextBox(text, pxW, fontSize, weight, family, align);
+    const ar = hPx / pxW;
+    el.ar = Math.max(0.03, Math.min(2.0, ar));
+    const node = domNodes.get(el.id);
+    if(node) positionNode(node, el);
   }
 
   function updateNodeContent(node, el){
@@ -1452,10 +1577,10 @@ const Elements = (() => {
     if(el.hidden) node.dataset.hidden = '1';
     else delete node.dataset.hidden;
 
-    if(!(el.type === 'audio' && State.role === 'host')){
-      node.style.opacity = (el.opacity == null ? 1 : el.opacity);
-    } else {
+    if(el.type === 'audio' && State.role === 'host'){
       node.style.opacity = '0';
+    } else {
+      node.style.opacity = (el.opacity == null ? 1 : el.opacity);
     }
 
     const ownerTag = frame.querySelector('.el-owner-tag');
@@ -1470,56 +1595,44 @@ const Elements = (() => {
     } else if(el.type === 'text'){
       const txt = frame.querySelector('.el-text');
       if(!txt) return;
-      if(document.activeElement !== txt) txt.textContent = el.content.text || '';
-      const baseF = el.content.fontSize || 28;
-      const baseW = el.content.baseW || 0.26;
+      if(document.activeElement !== txt){
+        animateTextContent(txt, el.content.text || '');
+      }
+      const baseF = el.content.fontSize || TEXT_BASE_FONT_SIZE;
+      const baseW = el.content.baseW || TEXT_BASE_W;
       const scale = baseW ? (el.w / baseW) : 1;
       txt.style.fontSize = Math.max(6, baseF * scale) + 'px';
       txt.style.color = el.content.color || '#ffffff';
       txt.style.fontWeight = el.content.bold ? '700' : '500';
       txt.style.fontFamily = el.content.fontFamily || "'Segoe UI', sans-serif";
-      txt.style.justifyContent = el.content.align === 'left' ? 'flex-start' : (el.content.align === 'right' ? 'flex-end' : 'center');
-      txt.style.textAlign = el.content.align || 'center';
-      const newText = el.content.text || '';
-      const isEmpty = newText.trim() === '';
-      if(el._lastText !== newText){
-        el._lastText = newText;
-        txt.style.opacity = isEmpty ? '0' : '1';
-      }
+      const align = el.content.align || 'center';
+      txt.style.justifyContent = align === 'left' ? 'flex-start' : (align === 'right' ? 'flex-end' : 'center');
+      txt.style.textAlign = align;
+      txt.style.opacity = (el.content.text || '').trim() === '' ? '0' : '1';
     } else if(el.type === 'youtube'){
       const iframe = frame.querySelector('iframe');
       const wantLoop = !!el.content.loop;
       if(iframe && (!iframe.dataset.loaded || iframe.dataset.loop !== String(wantLoop)) && el.content.videoId){
         iframe.dataset.loaded = '1';
         iframe.dataset.loop = String(wantLoop);
+        iframe.dataset.fallback = '';
         YouTubeSync.attach(el.id, iframe, el.content.videoId, el.content.start || 0, wantLoop);
       }
     } else if(el.type === 'video'){
-      if(State.role === 'host'){
-        const v = frame.querySelector('video');
-        if(v && v.dataset.srcSet !== '1' && el.content.src){
-          v.src = el.content.src;
-          v.dataset.srcSet = '1';
-          v.loop = !!el.content.loop;
-          v.muted = !!el.content.muted;
-          MediaCtl.register(el.id, v, null);
-          v.addEventListener('play', () => MediaCtl.paint(el.id));
-          v.addEventListener('pause', () => MediaCtl.paint(el.id));
-          v.addEventListener('ended', () => {
-            const cur = State.elements.get(el.id);
-            if(cur && !cur.content.loop){ Actions.removeElement(el.id); }
-            else if(cur){ cur.content.playing = false; Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: false } } }); }
-          });
-        } else if(v && v.dataset.srcSet === '1'){
-          v.loop = !!el.content.loop;
-        }
-      } else {
-        const nm = frame.querySelector('.evp-name');
-        if(nm) nm.textContent = (el.content && el.content.name) ? el.content.name : 'vídeo';
-        const pb = frame.querySelector('.evp-btn-play');
-        if(pb) pb.innerHTML = (el.content && el.content.playing) ? ICONS.pause : ICONS.play;
-        const mb = frame.querySelector('.evp-btn-mute');
-        if(mb) mb.innerHTML = (el.content && el.content.muted) ? ICONS.mute : ICONS.unmute;
+      const v = frame.querySelector('video');
+      if(v && v.dataset.srcSet !== '1' && el.content.src){
+        v.src = el.content.src;
+        v.dataset.srcSet = '1';
+        v.loop = !!el.content.loop;
+        v.muted = !!el.content.muted;
+        v.volume = DEFAULT_VOLUME;
+        v.controls = (State.role !== 'host');
+        MediaCtl.register(el.id, v, { btn: null });
+        v.addEventListener('play', () => MediaCtl.paint(el.id));
+        v.addEventListener('pause', () => MediaCtl.paint(el.id));
+      } else if(v && v.dataset.srcSet === '1'){
+        v.loop = !!el.content.loop;
+        v.controls = (State.role !== 'host');
       }
     } else if(el.type === 'audio'){
       const audio = frame.querySelector('audio');
@@ -1527,37 +1640,13 @@ const Elements = (() => {
         audio.src = el.content.src;
         audio.dataset.srcSet = '1';
         audio.loop = !!el.content.loop;
+        audio.volume = DEFAULT_VOLUME;
         el._audioEl = audio;
         MediaCtl.register(el.id, audio, { btn: null });
         audio.addEventListener('play', () => MediaCtl.paint(el.id));
         audio.addEventListener('pause', () => MediaCtl.paint(el.id));
-        audio.addEventListener('ended', () => {
-          const cur = State.elements.get(el.id);
-          if(cur){
-            cur.content.playing = false;
-            Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: false } } });
-          }
-        });
       } else if(audio && audio.dataset.srcSet === '1'){
         audio.loop = !!el.content.loop;
-      }
-      if(State.role !== 'host'){
-        const sq = frame.querySelector('.eab-btn');
-        if(sq) sq.innerHTML = (el.content && el.content.playing) ? ICONS.pause : ICONS.play;
-        const nm = frame.querySelector('.eab-name');
-        if(nm && el.content && el.content.name) nm.textContent = el.content.name;
-        if(audio && !audio._bound){
-          audio._bound = true;
-          const fill = frame.querySelector('.eab-progress > i');
-          const timeEl = frame.querySelector('.eab-time');
-          audio.addEventListener('timeupdate', () => {
-            if(fill && audio.duration) fill.style.width = Math.min(100, (audio.currentTime/audio.duration)*100)+'%';
-            if(timeEl) timeEl.textContent = Utils.fmtTime(audio.currentTime) + ' / ' + Utils.fmtTime(audio.duration);
-          });
-          audio.addEventListener('loadedmetadata', () => {
-            if(timeEl) timeEl.textContent = Utils.fmtTime(audio.currentTime) + ' / ' + Utils.fmtTime(audio.duration);
-          });
-        }
       }
     } else if(el.type === 'embed'){
       const iframe = frame.querySelector('iframe');
@@ -1596,7 +1685,7 @@ const Elements = (() => {
     node.addEventListener('pointerdown', (e) => {
       if(e.pointerType === 'mouse' && e.button !== 0) return;
       if(e.target === handle || e.target === rotHandle || e.target === delHandle || e.target === dragHandle) return;
-      if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.evp-btns') || e.target.closest('.el-audio-bar') || e.target.closest('.el-embed'))) return;
+      if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.el-embed') || e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' || e.target.closest('.el-audio-native') || e.target.closest('.el-video-native'))) return;
       const el = State.elements.get(elId); if(!el) return;
       if(el.type === 'text' && e.target.classList && e.target.classList.contains('el-text') && e.target.isContentEditable) return;
       if(State.activeTool === 'brush' || State.activeTool === 'eraser') return;
@@ -1614,6 +1703,7 @@ const Elements = (() => {
 
     node.addEventListener('dblclick', (e) => {
       const el = State.elements.get(elId); if(!el) return;
+      if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO') return;
 
       if(el.type === 'text'){
         const txt = node.querySelector('.el-text'); if(!txt) return;
@@ -1634,6 +1724,7 @@ const Elements = (() => {
           const val = (txt.innerText || '').slice(0, 600);
           const cur = State.elements.get(elId); if(!cur) return;
           cur.content.text = val;
+          fitTextBox(cur);
           Net.send({ type: Net.MSG.EL_UPDATE, id: elId, patch: { content: { text: val } } });
         }, 120);
         txt.addEventListener('input', push);
@@ -1641,7 +1732,7 @@ const Elements = (() => {
           txt.contentEditable = 'false';
           const val = (txt.innerText || '').slice(0, 600);
           const cur = State.elements.get(elId);
-          if(cur){ cur.content.text = val; Net.send({ type: Net.MSG.EL_UPDATE, id: elId, patch: { content: { text: val } } }); }
+          if(cur){ cur.content.text = val; fitTextBox(cur); Net.send({ type: Net.MSG.EL_UPDATE, id: elId, patch: { content: { text: val } } }); }
         }, { once: true });
       } else {
         e.stopPropagation();
@@ -1683,7 +1774,8 @@ const Elements = (() => {
 
   return { createElementObject, localAdd, localUpdate, localRemove, clearAllLocal,
            renderElement, repositionAll, getStageSize, domNodes, HOTKEYS,
-           positionNode, updateNodeContent, finalizeUpdate, throttledMove, throttledResize };
+           positionNode, updateNodeContent, finalizeUpdate, throttledMove, throttledResize,
+           fitTextBox };
 })();
 
 /* ---------- DragSession ---------- */
@@ -1763,8 +1855,8 @@ const DragSession = (() => {
     if(type === 'drag'){
       const newCx = cp.x - dOX;
       const newCy = cp.y - dOY;
-      el.x = Utils.clamp((newCx - c.x) / c.w, -1, 2);
-      el.y = Utils.clamp((newCy - c.y) / c.h, -1, 2);
+      el.x = Utils.clamp((newCx - c.x) / c.w, -2, 3);
+      el.y = Utils.clamp((newCy - c.y) / c.h, -2, 3);
       Elements.positionNode(node, el);
       Elements.throttledMove(el.id);
     } else if(type === 'resize'){
@@ -1784,6 +1876,7 @@ const DragSession = (() => {
         el.ar = rsAr;
         if(el.stretch){ el.stretch = false; node.classList.remove('stretched'); }
       }
+      if(el.type === 'text') Elements.fitTextBox(el);
       Elements.positionNode(node, el);
       Elements.updateNodeContent(node, el);
       Elements.throttledResize(el.id);
@@ -1812,7 +1905,7 @@ const DragSession = (() => {
   return { start, cancel, finish, isActive: () => active, getElId: () => elId };
 })();
 
-/* ---------- Drawing (com borracha sincronizada e snapshot consistente) ---------- */
+/* ---------- Drawing (permite fora da área do host) ---------- */
 const Drawing = (() => {
   const canvas = document.getElementById('draw-canvas');
   const ctx = canvas.getContext('2d');
@@ -1932,13 +2025,15 @@ const Drawing = (() => {
   }
 
   window.addEventListener('resize', Utils.throttle(resizeCanvas, 120));
-  return { resizeCanvas, startLocalStroke, addLocalPoint, endLocalStroke, receiveStrokePoint, eraseAt, clearAll, getSnapshot, loadSnapshot, scheduleSync };
+  return { resizeCanvas, startLocalStroke, addLocalPoint, endLocalStroke, receiveStrokePoint, eraseAt, clearAll, getSnapshot, loadSnapshot, scheduleSync, redrawAll };
 })();
 
 /* ---------- RemoteCursors ---------- */
 const RemoteCursors = (() => {
   const cursorLayer = document.getElementById('canvas-view');
   const nodes = new Map();
+  const AUTO_HIDE_MS = 5000;
+  const hideTimers = new Map();
 
   function cursorSVG(color){
     return `<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 2l14 6.5-6 1.7L9.7 16z" fill="${color}" stroke="white" stroke-width="1"/></svg>`;
@@ -1948,6 +2043,12 @@ const RemoteCursors = (() => {
     document.querySelectorAll('.remote-cursor').forEach(n => {
       if(n.dataset.userId === userId && n !== wanted){ n.remove(); }
     });
+  }
+  function scheduleAutoHide(userId){
+    const prev = hideTimers.get(userId);
+    if(prev) clearTimeout(prev);
+    const t = setTimeout(() => { hide(userId); }, AUTO_HIDE_MS);
+    hideTimers.set(userId, t);
   }
   function show(userId, x, y, color, name){
     if(!userId || userId === State.myUserId) return;
@@ -1975,6 +2076,7 @@ const RemoteCursors = (() => {
     }
     node.style.transform = `translate(${c.x + x * c.w}px, ${c.y + y * c.h}px)`;
     node.style.opacity = '1';
+    scheduleAutoHide(userId);
   }
   function click(userId){
     const node = nodes.get(userId);
@@ -1983,18 +2085,23 @@ const RemoteCursors = (() => {
     void node.offsetWidth;
     node.classList.add('clicking');
     setTimeout(() => node.classList.remove('clicking'), 500);
+    scheduleAutoHide(userId);
   }
   function hide(userId){
+    const t = hideTimers.get(userId);
+    if(t){ clearTimeout(t); hideTimers.delete(userId); }
     document.querySelectorAll('.remote-cursor').forEach(n => {
       if(n.dataset.userId === userId) n.remove();
     });
     nodes.delete(userId);
   }
-  function clearAll(){
+  function hideAll(){
+    hideTimers.forEach(t => clearTimeout(t));
+    hideTimers.clear();
     document.querySelectorAll('.remote-cursor').forEach(n => n.remove());
     nodes.clear();
   }
-  return { show, click, hide, clearAll };
+  return { show, click, hide, hideAll, clearAll: hideAll };
 })();
 
 /* ---------- Actions ---------- */
@@ -2018,7 +2125,12 @@ const Actions = (() => {
       userColor: State.myColor,
       v: 0,
     });
+    if(type === 'text'){
+      el.content.fontSize = TEXT_BASE_FONT_SIZE;
+      el.content.baseW = opts.w || TEXT_BASE_W;
+    }
     Elements.localAdd(el);
+    if(type === 'text') Elements.fitTextBox(el);
     Net.send({ type: Net.MSG.EL_CREATE, element: el });
     return el;
   }
@@ -2098,7 +2210,7 @@ const Actions = (() => {
     const v = document.createElement('video');
     v.preload = 'metadata';
     const finish = (ar) => {
-      const content = { src: raw, name: file.name, playing: false, muted: true, loop: false, variants: {} };
+      const content = { src: raw, name: file.name, playing: false, muted: false, loop: false, variants: {} };
       const opts = { w: 0.34, ar };
       if(pos) createElement('video', content, Object.assign(opts, { x: pos.x, y: pos.y }));
       else UI.enterPlacement('video', content, opts);
@@ -2155,7 +2267,12 @@ const Actions = (() => {
       userName: State.myName,
       userColor: State.myColor,
     });
+    if(fresh.type === 'text'){
+      fresh.content.fontSize = TEXT_BASE_FONT_SIZE;
+      fresh.content.baseW = src.content.baseW || TEXT_BASE_W;
+    }
     Elements.localAdd(fresh);
+    if(fresh.type === 'text') Elements.fitTextBox(fresh);
     Net.send({ type: Net.MSG.EL_CREATE, element: fresh });
     return fresh;
   }
@@ -2217,6 +2334,7 @@ const Programar = (() => {
       clone.userName = State.myName;
       clone.userColor = State.myColor;
       Elements.localAdd(clone, {silent:true});
+      if(clone.type === 'text') Elements.fitTextBox(clone);
     });
     UI.toast('Modo Programar: adicione elementos para o slot ' + key);
   }
@@ -2285,6 +2403,7 @@ const Programar = (() => {
       clone.userColor = State.myColor;
       clone.createdAt = Date.now();
       Elements.localAdd(clone);
+      if(clone.type === 'text') Elements.fitTextBox(clone);
       Net.send({ type: Net.MSG.EL_CREATE, element: clone });
     });
     return true;
@@ -2342,10 +2461,10 @@ function triggerHotkey(key){
         const node = Elements.domNodes.get(el.id);
         if(node){
           const iframe = node.querySelector('iframe');
-          if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; YouTubeSync.destroy(el.id); }
+          if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; iframe.dataset.fallback = ''; YouTubeSync.destroy(el.id); }
         }
       }
-      if(el.type === 'video' && State.role === 'host'){
+      if(el.type === 'video'){
         const node = Elements.domNodes.get(el.id);
         if(node){
           const vid = node.querySelector('video');
@@ -2399,7 +2518,6 @@ function handleMessageAsHost(msg, from, conn){
       if(conn){
         conn._userName = msg.name;
         conn.send(buildFullStateSnapshot());
-        /* envia a proporção real do host para o novo cliente */
         const s = Utils.getStageSize();
         conn.send({ type: Net.MSG.HOST_VIEWPORT, ar: s.w / s.h });
       }
@@ -2412,6 +2530,7 @@ function handleMessageAsHost(msg, from, conn){
       el.userName = UI.nameFor(el.userId) || el.userName || 'convidado';
       el.userColor = UI.colorFor(el.userId) || el.userColor;
       Elements.localAdd(el, {silent:true});
+      if(el.type === 'text') Elements.fitTextBox(el);
       Net.broadcastAll({ type: Net.MSG.EL_CREATE, element: el });
       break;
     }
@@ -2469,11 +2588,11 @@ function handleMessageAsHost(msg, from, conn){
       Net.broadcast(Object.assign({}, msg, { userId: from }), from);
       break;
     case Net.MSG.YT_SYNC:
-      YouTubeSync.applyRemote(msg.id, msg.action);
+      YouTubeSync.applyRemote(msg.id, msg.action, msg.time, msg.volume);
       Net.broadcast(msg, from);
       break;
     case Net.MSG.MEDIA_SYNC:
-      MediaCtl.applyRemote(msg.id, msg.action, msg.time);
+      MediaCtl.applyRemote(msg.id, msg.action, msg.time, msg.volume, msg.muted);
       Net.broadcast(msg, from);
       break;
   }
@@ -2484,7 +2603,6 @@ function handleMessageAsClient(msg, from){
       applyFullStateSnapshot(msg);
       UI.updateStageBounds();
       Elements.repositionAll();
-      Drawing.redrawAll?.();
       break;
     case Net.MSG.HOST_VIEWPORT:
       if(typeof msg.ar === 'number' && msg.ar > 0){
@@ -2497,6 +2615,7 @@ function handleMessageAsClient(msg, from){
       if(msg.element && msg.element.ghost) break;
       State.removed.delete(msg.element.id);
       Elements.localAdd(msg.element, {silent:true});
+      if(msg.element.type === 'text') Elements.fitTextBox(msg.element);
       break;
     case Net.MSG.EL_UPDATE: Elements.localUpdate(msg.id, msg.patch, msg.v); break;
     case Net.MSG.EL_MOVE: {
@@ -2519,13 +2638,16 @@ function handleMessageAsClient(msg, from){
     case Net.MSG.CURSOR_CLICK:
       if(msg.userId !== State.myUserId) RemoteCursors.click(msg.userId);
       break;
-    case Net.MSG.YT_SYNC: YouTubeSync.applyRemote(msg.id, msg.action); break;
-    case Net.MSG.MEDIA_SYNC: MediaCtl.applyRemote(msg.id, msg.action, msg.time); break;
-    case Net.MSG.PEER_LEFT: RemoteCursors.hide(msg.userId); break;
+    case Net.MSG.YT_SYNC: YouTubeSync.applyRemote(msg.id, msg.action, msg.time, msg.volume); break;
+    case Net.MSG.MEDIA_SYNC: MediaCtl.applyRemote(msg.id, msg.action, msg.time, msg.volume, msg.muted); break;
+    case Net.MSG.MEDIA_TICK: MediaTick.applyTick(msg.items); break;
+    case Net.MSG.PEER_LEFT:
+      RemoteCursors.hide(msg.userId);
+      break;
   }
 }
 
-/* ---------- Popup ---------- */
+/* ---------- Popup (consertado, com volume 15% e sem slider de tamanho de texto) ---------- */
 const Popup = (() => {
   const popup = document.getElementById('element-popup');
   const titleEl = document.getElementById('ep-title');
@@ -2556,17 +2678,21 @@ const Popup = (() => {
     tickTimer = setInterval(() => {
       const el = State.elements.get(targetId); if(!el) return;
       const timeEl = bodyEl.querySelector('.ep-media-time');
-      const fillEl = bodyEl.querySelector('.ep-media-fill');
-      if(!timeEl) return;
-      let cur = 0, dur = 0;
+      const playBtn = bodyEl.querySelector('.ep-btn-play');
+      if(!timeEl && !playBtn) return;
+      let cur = 0, dur = 0, paused = true;
       if(el.type === 'youtube'){
-        const info = YouTubeSync.getTime(el.id); cur = info.time; dur = info.dur;
+        const info = YouTubeSync.getTime(el.id); cur = info.time; dur = info.dur; paused = info.paused;
       } else {
         const m = MediaCtl.get(el.id);
-        if(m){ cur = m.currentTime || 0; dur = m.duration || 0; }
+        if(m){ cur = m.currentTime || 0; dur = m.duration || 0; paused = m.paused; }
       }
-      timeEl.textContent = Utils.fmtTime(cur) + ' / ' + Utils.fmtTime(dur);
-      if(fillEl && dur) fillEl.style.width = Math.min(100, (cur/dur)*100) + '%';
+      if(timeEl) timeEl.textContent = Utils.fmtTime(cur) + ' / ' + Utils.fmtTime(dur);
+      if(playBtn) playBtn.innerHTML = (paused ? ICONS.play : ICONS.pause) + '<span>' + (paused ? 'Play' : 'Pause') + '</span>';
+      const posSlider = bodyEl.querySelector('.ep-pos-slider');
+      if(posSlider && dur > 0 && document.activeElement !== posSlider){
+        posSlider.value = String(Math.round((cur / dur) * 1000));
+      }
     }, 250);
   }
   function stopTick(){ if(tickTimer){ clearInterval(tickTimer); tickTimer = null; } }
@@ -2596,6 +2722,7 @@ const Popup = (() => {
     titleEl.textContent = TYPE_LABEL[el.type] || 'Elemento';
     bodyEl.innerHTML = '';
 
+    // Opacidade
     const opRow = document.createElement('div');
     opRow.className = 'ep-row';
     opRow.innerHTML = '<span>Opacidade</span>';
@@ -2616,34 +2743,41 @@ const Popup = (() => {
     const ctrl = document.createElement('div');
     ctrl.className = 'ep-btns';
 
-    if(el.type === 'video' || el.type === 'audio'){
+    // Play / Pause para video, audio, youtube
+    if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const pb = document.createElement('button');
       pb.className = 'ep-btn ep-btn-play'; pb.type = 'button';
-      pb.innerHTML = ((el.content && el.content.playing) ? ICONS.pause : ICONS.play) + '<span>Play</span>';
+      pb.innerHTML = ICONS.play + '<span>Play</span>';
       pb.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        const next = !(el.content && el.content.playing);
-        el.content.playing = next;
-        pb.innerHTML = (next ? ICONS.pause : ICONS.play) + '<span>Play</span>';
-        Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { playing: next } } });
-        Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: next ? 'play' : 'pause' });
+        if(el.type === 'youtube'){
+          YouTubeSync.togglePlay(el.id);
+        } else {
+          MediaCtl.localToggle(el.id);
+        }
       });
       ctrl.appendChild(pb);
 
-      const mb = document.createElement('button');
-      mb.className = 'ep-btn ep-btn-mute'; mb.type = 'button';
-      mb.innerHTML = ((el.content && el.content.muted) ? ICONS.mute : ICONS.unmute) + '<span>Mudo</span>';
-      mb.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const next = !(el.content && el.content.muted);
-        el.content.muted = next;
-        mb.innerHTML = (next ? ICONS.mute : ICONS.unmute) + '<span>Mudo</span>';
-        Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { muted: next } } });
-        Net.send({ type: Net.MSG.MEDIA_SYNC, id: el.id, action: next ? 'mute' : 'unmute' });
-      });
-      ctrl.appendChild(mb);
+      if(el.type === 'video' || el.type === 'audio'){
+        const mb = document.createElement('button');
+        mb.className = 'ep-btn ep-btn-mute'; mb.type = 'button';
+        const m = MediaCtl.get(el.id);
+        const isMuted = m ? m.muted : !!(el.content && el.content.muted);
+        mb.innerHTML = (isMuted ? ICONS.mute : ICONS.unmute) + '<span>Mudo</span>';
+        mb.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          MediaCtl.toggleMute(el.id);
+          const mm = MediaCtl.get(el.id);
+          if(mm){
+            el.content.muted = mm.muted;
+            mb.innerHTML = (mm.muted ? ICONS.mute : ICONS.unmute) + '<span>Mudo</span>';
+          }
+        });
+        ctrl.appendChild(mb);
+      }
     }
 
+    // Ocultar do host
     const hb = document.createElement('button');
     hb.className = 'ep-btn ep-btn-hide' + (el.hidden ? ' toggled' : '');
     hb.type = 'button';
@@ -2659,6 +2793,7 @@ const Popup = (() => {
     });
     ctrl.appendChild(hb);
 
+    // Loop
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const lb = document.createElement('button');
       lb.className = 'ep-btn ep-btn-loop' + (el.content.loop ? ' toggled' : '');
@@ -2674,7 +2809,7 @@ const Popup = (() => {
           const node = Elements.domNodes.get(el.id);
           if(node){
             const iframe = node.querySelector('iframe');
-            if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; YouTubeSync.destroy(el.id); }
+            if(iframe){ iframe.dataset.loaded = ''; iframe.dataset.loop = ''; iframe.dataset.fallback = ''; YouTubeSync.destroy(el.id); }
           }
         }
         Elements.renderElement(el);
@@ -2684,12 +2819,14 @@ const Popup = (() => {
 
     bodyEl.appendChild(ctrl);
 
+    // Posição + Volume
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const posRow = document.createElement('div');
       posRow.className = 'ep-row';
       posRow.innerHTML = '<span>Posição</span>';
       const posSlider = document.createElement('input');
       posSlider.type = 'range'; posSlider.min = '0'; posSlider.max = '1000'; posSlider.value = '0';
+      posSlider.className = 'ep-pos-slider';
       const posTime = document.createElement('span'); posTime.className = 'ep-media-time'; posTime.textContent = '0:00 / 0:00';
       posRow.appendChild(posSlider); posRow.appendChild(posTime);
       bodyEl.appendChild(posRow);
@@ -2710,8 +2847,9 @@ const Popup = (() => {
       volRow.className = 'ep-row';
       volRow.innerHTML = '<span>Volume</span>';
       const volSlider = document.createElement('input');
-      volSlider.type = 'range'; volSlider.min = '0'; volSlider.max = '100'; volSlider.value = '100';
-      const volVal = document.createElement('span'); volVal.textContent = '100%';
+      volSlider.type = 'range'; volSlider.min = '0'; volSlider.max = '100';
+      volSlider.value = String(Math.round(DEFAULT_VOLUME * 100)); // 15
+      const volVal = document.createElement('span'); volVal.textContent = volSlider.value + '%';
       volSlider.addEventListener('input', (ev) => {
         ev.stopPropagation();
         const v = parseInt(volSlider.value, 10) / 100;
@@ -2724,6 +2862,7 @@ const Popup = (() => {
       bodyEl.appendChild(volRow);
     }
 
+    // Hotkeys grid
     if(el.type === 'image' || el.type === 'gif' || el.type === 'video' || el.type === 'youtube'){
       const lbl = document.createElement('div');
       lbl.className = 'ep-label'; lbl.textContent = 'Hotkeys 1-0 (trocar / ocultar)';
@@ -2779,6 +2918,7 @@ const Popup = (() => {
       bodyEl.appendChild(grid);
     }
 
+    // Texto (sem slider de tamanho)
     if(el.type === 'text'){
       const lbl = document.createElement('div');
       lbl.className = 'ep-label'; lbl.textContent = 'Texto';
@@ -2788,6 +2928,7 @@ const Popup = (() => {
       const sendText = Utils.throttle(() => {
         const cur = State.elements.get(el.id); if(!cur) return;
         cur.content.text = ta.value.slice(0, 600);
+        Elements.fitTextBox(cur);
         Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { text: cur.content.text } } });
         Elements.renderElement(cur);
       }, 120);
@@ -2808,39 +2949,35 @@ const Popup = (() => {
       });
       fSel.addEventListener('change', () => {
         el.content.fontFamily = fSel.value;
+        Elements.fitTextBox(el);
         Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { fontFamily: fSel.value } } });
         Elements.renderElement(el);
       });
       fSel.addEventListener('pointerdown', (e) => e.stopPropagation());
       bodyEl.appendChild(fSel);
 
-      const sizeRow = document.createElement('div');
-      sizeRow.className = 'ep-row';
-      sizeRow.innerHTML = '<span>Tamanho</span>';
-      const ss = document.createElement('input');
-      ss.type = 'range'; ss.min = '10'; ss.max = '140'; ss.value = el.content.fontSize || 28;
-      const sv = document.createElement('span'); sv.textContent = ss.value + 'px';
-      ss.addEventListener('input', () => {
-        el.content.fontSize = parseInt(ss.value, 10);
-        sv.textContent = ss.value + 'px';
-        Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { fontSize: el.content.fontSize } } });
-        Elements.renderElement(el);
-      });
-      ss.addEventListener('pointerdown', (e) => e.stopPropagation());
-      sizeRow.appendChild(ss); sizeRow.appendChild(sv);
-      bodyEl.appendChild(sizeRow);
-
       const cLbl = document.createElement('div');
       cLbl.className = 'ep-label'; cLbl.textContent = 'Cor';
       bodyEl.appendChild(cLbl);
       const cw = document.createElement('div');
       cw.className = 'ep-colors';
+      const free = document.createElement('input');
+      free.type = 'color'; free.className = 'free-color';
+      free.value = el.content.color || '#ffffff';
+      free.addEventListener('input', () => {
+        el.content.color = free.value;
+        Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { color: free.value } } });
+        Elements.renderElement(el);
+        cw.querySelectorAll('.ep-swatch').forEach(s => s.classList.remove('active'));
+      });
+      cw.appendChild(free);
       COLOR_PALETTE.forEach(c => {
         const sw = document.createElement('div');
         sw.className = 'ep-swatch'; sw.style.background = c;
         if((el.content.color || '#ffffff') === c) sw.classList.add('active');
         sw.addEventListener('click', () => {
           el.content.color = c;
+          free.value = c;
           Net.send({ type: Net.MSG.EL_UPDATE, id: el.id, patch: { content: { color: c } } });
           Elements.renderElement(el);
           cw.querySelectorAll('.ep-swatch').forEach(s => s.classList.remove('active'));
@@ -2963,6 +3100,7 @@ const UI = (() => {
     peerBadge.classList.add('hidden');
     connIndicator.style.display = 'none';
     liveBtn.classList.add('hidden');
+    MediaTick.start();
   }
   function activateClientUI(){
     document.body.classList.remove('host-mode');
@@ -2988,7 +3126,10 @@ const UI = (() => {
     Net.init({
       onMessage: onNetworkMessage,
       onClientJoined: () => updatePeerBadge(),
-      onClientLeft: (id) => { RemoteCursors.hide(id); updatePeerBadge(); },
+      onClientLeft: (id) => {
+        RemoteCursors.hide(id);
+        updatePeerBadge();
+      },
       onConnectionState: setConnState,
     });
   }
@@ -3006,6 +3147,7 @@ const UI = (() => {
     try{ sessionStorage.clear(); }catch(e){}
     try{ if(State.peer) State.peer.destroy(); }catch(e){}
     try{ DragSession.cancel(); }catch(e){}
+    MediaTick.stop();
     exitPlacement();
     State.peer = null; State.hostConn = null;
     State.clientConns.clear();
@@ -3022,7 +3164,7 @@ const UI = (() => {
     State.clipboard = null;
     State.hostAR = null;
     resetView();
-    RemoteCursors.clearAll();
+    RemoteCursors.hideAll();
     Elements.domNodes.forEach(n => n.remove()); Elements.domNodes.clear();
     Drawing.clearAll();
     document.body.classList.remove('host-mode');
@@ -3048,7 +3190,6 @@ const UI = (() => {
     liveBtn.classList.add('hidden');
   }
 
-  /* ---------- Host envia viewport periódico ---------- */
   function scheduleViewportSend(){
     if(State.role !== 'host') return;
     if(State._viewportTimer) return;
@@ -3099,8 +3240,6 @@ const UI = (() => {
       }
       return;
     }
-
-    /* Ctrl+Z / Ctrl+Y — desfazer/refazer a última ação do PRÓPRIO usuário */
     if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')){
       if(State.role && State.role !== 'host'){ e.preventDefault(); Actions.undo(); }
       return;
@@ -3183,12 +3322,20 @@ const UI = (() => {
   const guestError = document.getElementById('guest-name-error');
   const GUEST_PALETTE = ['#5285c2','#6a6ac4','#4a9d74','#b8873f','#c05454','#c2a940','#4b8fa8','#b56894'];
   let guestPickedColor = GUEST_PALETTE[0];
+  const freeGuest = document.createElement('input');
+  freeGuest.type = 'color'; freeGuest.className = 'free-color'; freeGuest.value = guestPickedColor;
+  freeGuest.addEventListener('input', () => {
+    guestPickedColor = freeGuest.value;
+    guestSwatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  });
+  guestSwatches.appendChild(freeGuest);
   GUEST_PALETTE.forEach((c, i) => {
     const sw = document.createElement('div');
     sw.className = 'swatch' + (i === 0 ? ' active' : '');
     sw.style.background = c;
     sw.addEventListener('click', () => {
       guestPickedColor = c;
+      freeGuest.value = c;
       guestSwatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
     });
@@ -3381,12 +3528,18 @@ const UI = (() => {
   const textPalette = ['#ffffff', '#5285c2', '#6a6ac4', '#4a9d74', '#b8873f', '#c05454', '#c2a940', '#0b0d10'];
   const tsw = document.getElementById('text-color-swatches');
   let selTextColor = '#ffffff';
+  const freeText = document.getElementById('text-color-free');
+  freeText.addEventListener('input', () => {
+    selTextColor = freeText.value;
+    tsw.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  });
   textPalette.forEach((c, i) => {
     const sw = document.createElement('div');
     sw.className = 'swatch' + (i === 0 ? ' active' : '');
     sw.style.background = c;
     sw.addEventListener('click', () => {
       selTextColor = c;
+      freeText.value = c;
       tsw.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
     });
@@ -3402,17 +3555,14 @@ const UI = (() => {
       textAlign = btn.dataset.align;
     });
   });
-  const tss = document.getElementById('text-size');
-  const tsv = document.getElementById('text-size-val');
-  tss.addEventListener('input', () => tsv.textContent = tss.value + 'px');
 
   document.getElementById('btn-add-text').addEventListener('click', () => {
     const raw = document.getElementById('text-content').value;
     if(!raw || !raw.trim()){ toastMsg('Digite um texto'); return; }
-    const w = 0.26;
+    const w = TEXT_BASE_W;
     const content = {
       text: raw.slice(0, 600),
-      fontSize: parseInt(tss.value, 10),
+      fontSize: TEXT_BASE_FONT_SIZE,
       color: selTextColor,
       bold: textBold,
       align: textAlign,
@@ -3567,6 +3717,21 @@ const UI = (() => {
     if(State.showMouseActive) Net.send({ type: Net.MSG.CURSOR_HIDE, userId: State.myUserId });
   });
 
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+      Net.send({ type: Net.MSG.CURSOR_HIDE, userId: State.myUserId });
+      State.showMouseActive = false;
+      const mb = document.getElementById('tool-mouse');
+      if(mb) mb.classList.remove('active');
+      if(State.activeTool === 'mouse') State.activeTool = null;
+    }
+  });
+  window.addEventListener('blur', () => {
+    if(State.showMouseActive){
+      Net.send({ type: Net.MSG.CURSOR_HIDE, userId: State.myUserId });
+    }
+  });
+
   stage.addEventListener('wheel', (e) => {
     if(State.role === 'host') return;
     e.preventDefault();
@@ -3604,19 +3769,18 @@ const UI = (() => {
     const r = stage.getBoundingClientRect();
     const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
     const c = Utils.getCanvasRect();
-    const bx = Utils.clamp((cp.x - c.x) / c.w, -1, 2);
-    const by = Utils.clamp((cp.y - c.y) / c.h, -1, 2);
+    const bx = (cp.x - c.x) / c.w;
+    const by = (cp.y - c.y) / c.h;
     const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
     if(!files.length) return;
     const hi = files.findIndex(f => /\.html?$/i.test(f.name) || f.type === 'text/html');
     if(hi >= 0){ const hf = files.splice(hi, 1)[0]; await Actions.addHtmlFromFile(hf, { x: bx, y: by }); }
     for(let i = 0; i < files.length; i++){
-      const pos = { x: Utils.clamp(bx + i * 0.03, -1, 2), y: Utils.clamp(by + i * 0.04, -1, 2) };
+      const pos = { x: bx + i * 0.03, y: by + i * 0.04 };
       await Actions.addFileByType(files[i], pos);
     }
   });
 
-  /* ---------- Host resize: atualiza layout local e envia proporção ---------- */
   window.addEventListener('resize', Utils.throttle(() => {
     if(State.role === 'host'){
       const s = Utils.getStageSize();
