@@ -2566,9 +2566,7 @@ const MediaTick = (() => {
           id: el.id,
           time: info.time,
           duration: info.dur,
-          paused: info.paused,
-          volume: YouTubeSync.getVolume(el.id),
-          muted: State.role !== 'host'
+          paused: info.paused
         });
       }
     });
@@ -2590,7 +2588,7 @@ const MediaTick = (() => {
     if(!items || State.role === 'host') return;
     items.forEach(it => {
       if(it.kind === 'youtube'){
-        YouTubeSync.applyRemote(it.id, it.paused ? 'pause' : 'play', it.time, it.volume);
+        YouTubeSync.applyRemote(it.id, it.paused ? 'pause' : 'play', it.time);
       } else {
         MediaCtl.applyRemote(it.id, it.paused ? 'pause' : 'play', it.time, it.volume, it.muted);
       }
