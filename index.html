@@ -2345,7 +2345,13 @@ const YouTubeSync = (() => {
   function attach(elId, iframe, videoId, start, loop, ui){
     const existing = players.get(elId);
     if(existing && existing.player){ try{ existing.player.destroy(); }catch(e){} }
-    const playerEntry = { player: null, iframe, videoId, ui, ready: false, desiredPlaying: null };
+    const el = State.elements.get(elId);
+    const initialVolume = el && typeof el.content.volume === 'number' && isFinite(el.content.volume)
+      ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+    const playerEntry = {
+      player: null, iframe, videoId, ui, ready: false, desiredPlaying: null,
+      desiredVolume: initialVolume, volumeTouched: false
+    };
     players.set(elId, playerEntry);
     loadApi().then(() => {
       if(players.get(elId) !== playerEntry || !document.body.contains(iframe)) return;
@@ -2361,14 +2367,11 @@ const YouTubeSync = (() => {
             if(players.get(elId) !== playerEntry || !document.body.contains(iframe)) return;
             playerEntry.ready = true;
             try{
-              if(isHost){
-                const el = State.elements.get(elId);
-                const volume = el && typeof el.content.volume === 'number'
-                  ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
-                e.target.unMute();
-                e.target.setVolume(Math.round(volume * 100));
-              }
-              else { e.target.mute(); e.target.setVolume(0); }
+              if(isHost || playerEntry.volumeTouched){
+                if(playerEntry.desiredVolume > 0) e.target.unMute();
+                else e.target.mute();
+              } else e.target.mute();
+              e.target.setVolume(Math.round(playerEntry.desiredVolume * 100));
               if(start && start > 0) e.target.seekTo(start, true);
               if(playerEntry.desiredPlaying === false) e.target.pauseVideo();
               else e.target.playVideo();
@@ -2442,17 +2445,31 @@ const YouTubeSync = (() => {
   function applyRemote(id, action, time, volume){
     if(typeof volume === 'number' && isFinite(volume)){
       const el = State.elements.get(id);
-      if(el) el.content.volume = Utils.clamp(volume, 0, 1);
+      const nextVolume = Utils.clamp(volume, 0, 1);
+      if(el) el.content.volume = nextVolume;
+      const ent = players.get(id);
+      if(ent){
+        ent.desiredVolume = nextVolume;
+        ent.volumeTouched = true;
+        applyVolume(ent, nextVolume);
+      }
     }
     if(action === 'play') requestPlaying(id, true, false);
     else if(action === 'pause') requestPlaying(id, false, false);
-    else if(action === 'unmute'){ cmd(id, 'unMute'); cmd(id, 'setVolume', [Math.round(DEFAULT_VOLUME * 100)]); }
+    else if(action === 'unmute'){
+      const el = State.elements.get(id);
+      const ent = players.get(id);
+      const currentVolume = el && typeof el.content.volume === 'number'
+        ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+      if(ent){
+        ent.volumeTouched = true;
+        ent.desiredVolume = currentVolume;
+        applyVolume(ent, currentVolume);
+      } else if(currentVolume > 0) cmd(id, 'unMute');
+      else cmd(id, 'mute');
+    }
     else if(action === 'mute') cmd(id, 'mute');
     if(typeof time === 'number' && isFinite(time)) cmd(id, 'seekTo', [time, true]);
-    if(typeof volume === 'number' && isFinite(volume)){
-      cmd(id, 'setVolume', [Math.round(volume * 100)]);
-      if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
-    }
     paint(id);
   }
   function seek(id, time){ cmd(id, 'seekTo', [time, true]); Net.send({ type: Net.MSG.YT_SYNC, id, action:'seek', time }); paint(id); }
@@ -2460,10 +2477,25 @@ const YouTubeSync = (() => {
     const volume = Utils.clamp(v, 0, 1);
     const el = State.elements.get(id);
     if(el) el.content.volume = volume;
-    cmd(id, 'setVolume', [Math.round(volume * 100)]);
-    if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
+    const ent = players.get(id);
+    if(ent){
+      ent.desiredVolume = volume;
+      ent.volumeTouched = true;
+      applyVolume(ent, volume);
+    }
     Net.send({ type: Net.MSG.YT_SYNC, id, action:'volume', volume });
     paint(id);
+  }
+  function applyVolume(ent, volume){
+    if(!ent || !ent.ready) return;
+    if(volume > 0) cmdForEntry(ent, 'unMute');
+    else cmdForEntry(ent, 'mute');
+    cmdForEntry(ent, 'setVolume', [Math.round(volume * 100)]);
+  }
+  function cmdForEntry(ent, fn, args){
+    if(!ent || !ent.player || typeof ent.player[fn] !== 'function') return false;
+    try{ ent.player[fn].apply(ent.player, args || []); return true; }
+    catch(e){ return false; }
   }
   function getTime(id){
     const ent = players.get(id); if(!ent) return { time: 0, dur: 0, paused: true };
