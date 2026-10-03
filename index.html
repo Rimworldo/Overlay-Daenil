@@ -134,6 +134,17 @@ button{font-family:inherit;}
 #app{position:fixed;inset:0;display:none;}
 #app.active{display:block;}
 #app-bg{position:absolute;inset:0;}
+#media-upload{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:880;
+  display:none;width:min(360px,calc(100vw - 32px));padding:10px 12px;
+  border:1px solid var(--line-2);border-radius:8px;background:rgba(21,24,28,.96);
+  box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none;
+}
+#media-upload.show{display:block;}
+#media-upload-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text-dim);margin-bottom:7px;}
+#media-upload-track{height:5px;background:rgba(255,255,255,.12);border-radius:5px;overflow:hidden;}
+#media-upload-fill{display:block;width:0;height:100%;background:var(--accent);transition:width .12s linear;}
+body.host-mode #media-upload{display:none !important;}
 
 #live-btn{
   position:fixed;top:10px;left:12px;z-index:700;
@@ -298,6 +309,26 @@ body.program-mode .el *{
 /* Vídeo nativo */
 .el-video-native{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;}
 .el-video-native video{width:100%;height:100%;display:block;background:#000;border-radius:6px;}
+.el-video-player-controls{
+  position:absolute;left:6px;right:6px;bottom:6px;z-index:6;
+  display:flex;align-items:center;gap:5px;box-sizing:border-box;
+  height:28px;padding:3px 7px;background:rgba(21,24,28,.92);
+  border:1px solid var(--line-2);border-radius:6px;color:var(--text);overflow:hidden;
+}
+.el-video-player-controls button{
+  flex:none;width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  padding:0;border:0;background:transparent;color:inherit;cursor:pointer;overflow:hidden;
+}
+.el-video-player-controls button svg{width:15px;height:15px;}
+.el-player-volume-group{display:flex;align-items:center;gap:5px;flex:0 1 67px;min-width:0;margin-left:8px;}
+.el-player-volume-icon{display:flex;align-items:center;justify-content:center;flex:none;width:13px;height:16px;color:var(--text-dim);}
+.el-player-volume-icon svg{width:13px;height:13px;}
+.el-player-volume{flex:1 1 42px;width:42px;min-width:0;height:4px;accent-color:var(--accent);cursor:pointer;}
+.el[data-type="video"].selected > .el-frame,
+.el[data-type="video"].multi-selected > .el-frame,
+.el[data-type="youtube"].selected > .el-frame,
+.el[data-type="youtube"].multi-selected > .el-frame{outline-offset:7px;}
+body.host-mode .el-video-player-controls{display:none !important;}
 
 /* Player de áudio customizado */
 .el-audio-player{
@@ -319,15 +350,6 @@ body.program-mode .el *{
 .el-audio-progress{height:3px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;}
 .el-audio-progress-fill{display:block;width:0;height:100%;background:var(--accent);}
 .el-audio-time{flex:none;color:var(--text-dim);font-size:10px;font-variant-numeric:tabular-nums;}
-
-.el-media-controls{position:absolute;bottom:8px;left:8px;z-index:5;display:flex;gap:6px;pointer-events:auto;}
-.mc-btn{
-  background:rgba(13,17,23,0.9);color:var(--text);border:1px solid rgba(255,255,255,0.14);
-  border-radius:14px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;
-  display:flex;align-items:center;gap:4px;
-}
-.mc-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
-.mc-btn svg{width:12px;height:12px;}
 
 .el-handle{position:absolute;width:12px;height:12px;right:-6px;bottom:-6px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:nwse-resize;opacity:0;transition:opacity .15s ease;pointer-events:auto;z-index:4;}
 .el.selected .el-handle,
@@ -769,7 +791,7 @@ body.host-mode #group-menu { display: none !important; }
     <div class="tut-section">
       <h4>Barra lateral (Toolbar)</h4>
       <ul>
-        <li><b>Imagem / GIF / Vídeo / Áudio / YouTube / Texto / HTML</b> — escolha o conteúdo e clique na tela para posicionar.</li>
+        <li><b>Imagem / GIF / Vídeo / Áudio / YouTube / Texto / HTML</b> — escolha o conteúdo e clique na tela para posicionar. Vídeos têm controles de play/pause, posição e volume no próprio player.</li>
         <li><b>Animar</b> — selecione um ou mais itens e abra o editor de animações (Pulsar, Rodar, Mover, Orbitar).</li>
         <li><b>Pincel / Borracha</b> — desenhe livremente na tela.</li>
         <li><b>Tutorial</b> — este guia.</li>
@@ -844,6 +866,10 @@ body.host-mode #group-menu { display: none !important; }
 <!-- ============ APP ROOT ============ -->
 <div id="app">
   <div id="app-bg"></div>
+  <div id="media-upload" role="status" aria-live="polite">
+    <span id="media-upload-label"></span>
+    <div id="media-upload-track"><span id="media-upload-fill"></span></div>
+  </div>
 
   <button id="live-btn" class="hidden" title="Mostrar live do Daenil">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -968,7 +994,7 @@ body.host-mode #group-menu { display: none !important; }
     <h4>Vídeo <button class="fy-close" data-close>Fechar</button></h4>
     <label class="fy-file-btn" for="input-video-file">Escolher arquivo</label>
     <input type="file" id="input-video-file" accept="video/*" class="hidden">
-    <div class="fy-hint">Máx 14MB. Depois clique na tela para posicionar.</div>
+    <div class="fy-hint">Limite atual: 14 MB por arquivo (transferência P2P). Depois clique na tela para posicionar.</div>
   </div>
   <div class="flyout" id="flyout-text">
     <h4>Texto <button class="fy-close" data-close>Fechar</button></h4>
@@ -1194,8 +1220,14 @@ const Utils = (() => {
     return { videoId, start };
   }
   function isSafeMediaDataUrl(u){ return typeof u === 'string' && /^data:(image\/(png|jpeg|jpg|gif|webp|avif)|video\/[a-z0-9.+-]+|audio\/[a-z0-9.+-]+);base64,/.test(u); }
-  function fileToDataURL(f){
-    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+  function fileToDataURL(f, onProgress){
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onprogress = e => { if(onProgress && e.lengthComputable) onProgress(e.loaded, e.total); };
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error || new Error('Falha ao ler o arquivo'));
+      r.readAsDataURL(f);
+    });
   }
   function downscaleImage(dataUrl, maxDim){
     return new Promise(res => {
@@ -2090,11 +2122,17 @@ const Net = (() => {
 const MediaCtl = (() => {
   const map = new Map();
   const uiMap = new Map();
+  const pendingPlay = new Map();
+  const playInFlight = new Set();
+  const pendingNotify = new Map();
   function register(id, el, ui){
     map.set(id, el);
     if(ui) uiMap.set(id, ui);
   }
-  function unregister(id){ map.delete(id); uiMap.delete(id); }
+  function unregister(id){
+    map.delete(id); uiMap.delete(id); pendingPlay.delete(id);
+    playInFlight.delete(id); pendingNotify.delete(id);
+  }
   function get(id){ return map.get(id); }
 
   function paint(id){
@@ -2102,27 +2140,97 @@ const MediaCtl = (() => {
     if(!m || !ui) return;
     if(ui.btn){
       ui.btn.innerHTML = m.paused ? ICONS.play : ICONS.pause;
-      ui.btn.setAttribute('aria-label', m.paused ? 'Reproduzir áudio' : 'Pausar áudio');
-      ui.btn.title = m.paused ? 'Reproduzir áudio' : 'Pausar áudio';
+      const label = ui.label || 'áudio';
+      ui.btn.setAttribute('aria-label', (m.paused ? 'Reproduzir ' : 'Pausar ') + label);
+      ui.btn.title = (m.paused ? 'Reproduzir ' : 'Pausar ') + label;
     }
     if(ui.muteBtn) ui.muteBtn.innerHTML = m.muted ? ICONS.mute : ICONS.unmute;
     if(ui.fill && m.duration && isFinite(m.duration)) ui.fill.style.width = Math.min(100, (m.currentTime / m.duration) * 100) + '%';
     if(ui.time) ui.time.textContent = Utils.fmtTime(m.currentTime) + ' / ' + Utils.fmtTime(m.duration);
+    if(ui.seek && m.duration && isFinite(m.duration) && document.activeElement !== ui.seek){
+      ui.seek.value = String(Math.round((m.currentTime / m.duration) * 1000));
+    }
+    if(ui.volume && document.activeElement !== ui.volume){
+      ui.volume.value = String(Math.round(m.volume * 100));
+    }
   }
 
   function localToggle(id){
     const m = map.get(id); if(!m) return;
+    const playing = pendingPlay.has(id) ? pendingPlay.get(id) : !m.paused;
+    requestPlayState(id, !playing, true);
+  }
+
+  function sendPlaybackState(id, action, media){
+    Net.send({
+      type: Net.MSG.MEDIA_SYNC, id, action,
+      time: media.currentTime, volume: media.volume, muted: media.muted
+    });
+  }
+
+  function requestPlayState(id, playing, notify){
+    const m = map.get(id); if(!m) return;
+    pendingPlay.set(id, playing);
+    if(!playing){
+      m.pause();
+      if(m.paused && !playInFlight.has(id)) pendingPlay.delete(id);
+      pendingNotify.delete(id);
+      if(notify) sendPlaybackState(id, 'pause', m);
+      paint(id);
+      return;
+    }
+    if(notify) pendingNotify.set(id, true);
+    if(playInFlight.has(id)) return;
     if(m.ended || (m.duration && m.currentTime >= m.duration - 0.05)){
       try{ m.currentTime = 0; }catch(e){}
     }
-    if(m.paused){
-      Utils.tryPlay(m);
-      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'play', time: m.currentTime, volume: m.volume, muted: m.muted });
-    } else {
-      m.pause();
-      Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'pause', time: m.currentTime, volume: m.volume, muted: m.muted });
+    let result;
+    try{
+      playInFlight.add(id);
+      result = m.play();
     }
-    paint(id);
+    catch(err){
+      playInFlight.delete(id);
+      pendingPlay.delete(id);
+      if(pendingNotify.get(id)) UI.toast('Não foi possível reproduzir a mídia neste navegador.');
+      pendingNotify.delete(id);
+      return;
+    }
+    if(result && typeof result.then === 'function'){
+      result.then(() => {
+        playInFlight.delete(id);
+        if(!pendingPlay.has(id)) return;
+        if(!pendingPlay.get(id)){
+          m.pause();
+          if(m.paused) pendingPlay.delete(id);
+          pendingNotify.delete(id);
+          paint(id);
+          return;
+        }
+        pendingPlay.delete(id);
+        if(pendingNotify.get(id)) sendPlaybackState(id, 'play', m);
+        pendingNotify.delete(id);
+        paint(id);
+      }).catch(() => {
+        playInFlight.delete(id);
+        if(pendingPlay.get(id) === false){
+          m.pause();
+          if(m.paused) pendingPlay.delete(id);
+          pendingNotify.delete(id);
+        } else if(pendingPlay.get(id) === true){
+          pendingPlay.delete(id);
+          if(pendingNotify.get(id)) UI.toast('O navegador bloqueou a reprodução da mídia.');
+          pendingNotify.delete(id);
+        }
+        paint(id);
+      });
+    } else {
+      playInFlight.delete(id);
+      pendingPlay.delete(id);
+      if(pendingNotify.get(id)) sendPlaybackState(id, 'play', m);
+      pendingNotify.delete(id);
+      paint(id);
+    }
   }
 
   function toggleMute(id){
@@ -2167,8 +2275,8 @@ const MediaCtl = (() => {
         const el = State.elements.get(id);
         if(el) el.content.muted = muted;
       }
-      if(action === 'play'){ if(m.ended){ try{ m.currentTime = 0; }catch(e){} } Utils.tryPlay(m); }
-      else if(action === 'pause') m.pause();
+      if(action === 'play'){ if(m.ended){ try{ m.currentTime = 0; }catch(e){} } requestPlayState(id, true, false); }
+      else if(action === 'pause') requestPlayState(id, false, false);
       else if(action === 'mute') m.muted = true;
       else if(action === 'unmute'){ m.muted = false; Utils.tryPlay(m); }
     }catch(e){}
@@ -2188,13 +2296,26 @@ const MediaCtl = (() => {
     };
   }
 
-  return { register, unregister, get, paint, localToggle, toggleMute, localSeek, setVolume, applyRemote, getSnapshot };
+  function syncPlayback(id){
+    const m = map.get(id);
+    if(!m || !pendingPlay.has(id)) return;
+    const desired = pendingPlay.get(id);
+    if(!desired){
+      if(m.paused && !playInFlight.has(id)) pendingPlay.delete(id);
+      else m.pause();
+      return;
+    }
+    if(m.paused && !playInFlight.has(id)) requestPlayState(id, true, false);
+  }
+
+  return { register, unregister, get, paint, localToggle, toggleMute, localSeek, setVolume, applyRemote, getSnapshot, syncPlayback };
 })();
 
 /* ---------- YouTubeSync ---------- */
 const YouTubeSync = (() => {
   const players = new Map();
   let apiPromise = null;
+  let uiTimer = null;
   function loadApi(){
     if(window.YT && window.YT.Player) return Promise.resolve();
     if(apiPromise) return apiPromise;
@@ -2221,11 +2342,13 @@ const YouTubeSync = (() => {
     return url;
   }
 
-  function attach(elId, iframe, videoId, start, loop){
+  function attach(elId, iframe, videoId, start, loop, ui){
+    const existing = players.get(elId);
+    if(existing && existing.player){ try{ existing.player.destroy(); }catch(e){} }
+    const playerEntry = { player: null, iframe, videoId, ui, ready: false, desiredPlaying: null };
+    players.set(elId, playerEntry);
     loadApi().then(() => {
-      if(!document.body.contains(iframe)) return;
-      const entry = players.get(elId);
-      if(entry){ try{ entry.player.destroy(); }catch(e){} players.delete(elId); }
+      if(players.get(elId) !== playerEntry || !document.body.contains(iframe)) return;
       const isHost = State.role === 'host';
       const origin = computeOrigin();
 
@@ -2235,6 +2358,8 @@ const YouTubeSync = (() => {
       const player = new YT.Player(iframe, {
         events: {
           onReady: (e) => {
+            if(players.get(elId) !== playerEntry || !document.body.contains(iframe)) return;
+            playerEntry.ready = true;
             try{
               if(isHost){
                 const el = State.elements.get(elId);
@@ -2245,8 +2370,10 @@ const YouTubeSync = (() => {
               }
               else { e.target.mute(); e.target.setVolume(0); }
               if(start && start > 0) e.target.seekTo(start, true);
-              e.target.playVideo();
+              if(playerEntry.desiredPlaying === false) e.target.pauseVideo();
+              else e.target.playVideo();
             }catch(err){}
+            paint(elId);
           },
           onError: (e) => {
             if(e.data === 153 || e.data === 150 || e.data === 101){
@@ -2264,19 +2391,27 @@ const YouTubeSync = (() => {
             }
           },
           onStateChange: (e) => {
-            if(!players.get(elId)) return;
+            if(players.get(elId) !== playerEntry) return;
             const el = State.elements.get(elId);
-            const node = Elements.domNodes.get(elId);
-            const btn = node && node.querySelector('.mc-btn');
-            if(e.data === YT.PlayerState.PLAYING && btn) btn.innerHTML = ICONS.pause;
-            else if(e.data === YT.PlayerState.PAUSED && btn) btn.innerHTML = ICONS.play;
-            else if(e.data === YT.PlayerState.ENDED){
+            if(playerEntry.desiredPlaying !== null &&
+               (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.PAUSED)){
+              const playing = e.data === YT.PlayerState.PLAYING;
+              if(playing === playerEntry.desiredPlaying) playerEntry.desiredPlaying = null;
+              else if(playerEntry.desiredPlaying) e.target.playVideo();
+              else e.target.pauseVideo();
+            }
+            paint(elId);
+            if(e.data === YT.PlayerState.ENDED){
               if(el && !el.content.loop && State.role === 'host') Actions.removeElement(elId);
             }
           }
         }
       });
-      players.set(elId, { player, iframe, videoId });
+      playerEntry.player = player;
+      paint(elId);
+      if(!uiTimer) uiTimer = setInterval(() => players.forEach((entry, id) => paint(id)), 250);
+    }).catch(() => {
+      UI.toast('Não foi possível carregar o player do YouTube.');
     });
   }
   function cmd(id, fn, args){
@@ -2286,18 +2421,31 @@ const YouTubeSync = (() => {
   }
   function togglePlay(id){
     const ent = players.get(id); if(!ent) return;
-    let playing = false;
-    try{ playing = ent.player.getPlayerState() === YT.PlayerState.PLAYING; }catch(e){}
-    if(playing){ cmd(id, 'pauseVideo'); Net.send({ type: Net.MSG.YT_SYNC, id, action:'pause' }); }
-    else { cmd(id, 'playVideo'); Net.send({ type: Net.MSG.YT_SYNC, id, action:'play' }); }
+    let playing = ent.desiredPlaying;
+    if(playing === null){
+      try{ playing = ent.ready && ent.player.getPlayerState() === YT.PlayerState.PLAYING; }
+      catch(e){ playing = true; }
+      if(!ent.ready) playing = true;
+    }
+    requestPlaying(id, !playing, true);
+  }
+  function requestPlaying(id, playing, notify){
+    const ent = players.get(id); if(!ent) return;
+    ent.desiredPlaying = playing;
+    if(ent.ready){
+      if(playing) cmd(id, 'playVideo');
+      else cmd(id, 'pauseVideo');
+    }
+    if(notify) Net.send({ type: Net.MSG.YT_SYNC, id, action: playing ? 'play' : 'pause' });
+    paint(id);
   }
   function applyRemote(id, action, time, volume){
     if(typeof volume === 'number' && isFinite(volume)){
       const el = State.elements.get(id);
       if(el) el.content.volume = Utils.clamp(volume, 0, 1);
     }
-    if(action === 'play') cmd(id, 'playVideo');
-    else if(action === 'pause') cmd(id, 'pauseVideo');
+    if(action === 'play') requestPlaying(id, true, false);
+    else if(action === 'pause') requestPlaying(id, false, false);
     else if(action === 'unmute'){ cmd(id, 'unMute'); cmd(id, 'setVolume', [Math.round(DEFAULT_VOLUME * 100)]); }
     else if(action === 'mute') cmd(id, 'mute');
     if(typeof time === 'number' && isFinite(time)) cmd(id, 'seekTo', [time, true]);
@@ -2305,8 +2453,9 @@ const YouTubeSync = (() => {
       cmd(id, 'setVolume', [Math.round(volume * 100)]);
       if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
     }
+    paint(id);
   }
-  function seek(id, time){ cmd(id, 'seekTo', [time, true]); Net.send({ type: Net.MSG.YT_SYNC, id, action:'seek', time }); }
+  function seek(id, time){ cmd(id, 'seekTo', [time, true]); Net.send({ type: Net.MSG.YT_SYNC, id, action:'seek', time }); paint(id); }
   function setVolume(id, v){
     const volume = Utils.clamp(v, 0, 1);
     const el = State.elements.get(id);
@@ -2314,6 +2463,7 @@ const YouTubeSync = (() => {
     cmd(id, 'setVolume', [Math.round(volume * 100)]);
     if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
     Net.send({ type: Net.MSG.YT_SYNC, id, action:'volume', volume });
+    paint(id);
   }
   function getTime(id){
     const ent = players.get(id); if(!ent) return { time: 0, dur: 0, paused: true };
@@ -2329,17 +2479,43 @@ const YouTubeSync = (() => {
   function getVolume(id){
     const ent = players.get(id);
     const el = State.elements.get(id);
+    if(el && typeof el.content.volume === 'number' && isFinite(el.content.volume)){
+      return Utils.clamp(el.content.volume, 0, 1);
+    }
     if(!ent) return (el && typeof el.content.volume === 'number')
       ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
-    try{ return Utils.clamp(ent.player.getVolume() / 100, 0, 1); }
-    catch(e){ return (el && typeof el.content.volume === 'number')
-      ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME; }
+    try{
+      const volume = ent.player.getVolume();
+      return typeof volume === 'number' && isFinite(volume)
+        ? Utils.clamp(volume / 100, 0, 1) : DEFAULT_VOLUME;
+    }catch(e){ return DEFAULT_VOLUME; }
+  }
+  function paint(id){
+    const ent = players.get(id);
+    if(!ent || !ent.ui) return;
+    const ui = ent.ui;
+    const info = getTime(id);
+    const volume = getVolume(id);
+    const playing = !info.paused;
+    if(ui.btn){
+      ui.btn.innerHTML = playing ? ICONS.pause : ICONS.play;
+      ui.btn.setAttribute('aria-label', playing ? 'Pausar vídeo' : 'Reproduzir vídeo');
+      ui.btn.title = playing ? 'Pausar vídeo' : 'Reproduzir vídeo';
+    }
+    if(ui.time) ui.time.textContent = Utils.fmtTime(info.time) + ' / ' + Utils.fmtTime(info.dur);
+    if(ui.seek && info.dur > 0 && document.activeElement !== ui.seek){
+      ui.seek.value = String(Math.round((info.time / info.dur) * 1000));
+    }
+    if(ui.volume && document.activeElement !== ui.volume){
+      ui.volume.value = String(Math.round(volume * 100));
+    }
   }
   function destroy(id){
     const ent = players.get(id);
     if(ent){ try{ ent.player.destroy(); }catch(e){} players.delete(id); }
+    if(!players.size && uiTimer){ clearInterval(uiTimer); uiTimer = null; }
   }
-  return { attach, togglePlay, applyRemote, seek, setVolume, getTime, getVolume, destroy };
+  return { attach, togglePlay, applyRemote, seek, setVolume, getTime, getVolume, paint, destroy };
 })();
 
 /* ---------- MediaTick (host master a cada 5s) ---------- */
@@ -2512,6 +2688,47 @@ const Elements = (() => {
     updateNodeContent(node, el);
   }
 
+  function buildVideoControls(el, frame){
+    const controls = document.createElement('div');
+    controls.className = 'el-video-player-controls';
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.innerHTML = ICONS.play;
+    playBtn.setAttribute('aria-label', 'Reproduzir vídeo');
+    const volume = document.createElement('input');
+    volume.type = 'range'; volume.min = '0'; volume.max = '100';
+    const initialVolume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
+      ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+    volume.value = String(Math.round(initialVolume * 100));
+    volume.className = 'el-player-volume';
+    volume.setAttribute('aria-label', 'Volume do vídeo');
+    const volumeGroup = document.createElement('span');
+    volumeGroup.className = 'el-player-volume-group';
+    const volumeIcon = document.createElement('span');
+    volumeIcon.className = 'el-player-volume-icon';
+    volumeIcon.setAttribute('aria-hidden', 'true');
+    volumeIcon.innerHTML = ICONS.unmute;
+    [controls, playBtn, volumeGroup, volumeIcon, volume].forEach(target => {
+      target.addEventListener('pointerdown', e => e.stopPropagation());
+      target.addEventListener('click', e => e.stopPropagation());
+    });
+    playBtn.addEventListener('click', () => {
+      if(el.type === 'youtube') YouTubeSync.togglePlay(el.id);
+      else MediaCtl.localToggle(el.id);
+    });
+    volume.addEventListener('input', () => {
+      const value = Number(volume.value) / 100;
+      if(el.type === 'youtube') YouTubeSync.setVolume(el.id, value);
+      else MediaCtl.setVolume(el.id, value);
+    });
+    volumeGroup.appendChild(volumeIcon);
+    volumeGroup.appendChild(volume);
+    controls.appendChild(playBtn);
+    controls.appendChild(volumeGroup);
+    frame.appendChild(controls);
+    return { btn: playBtn, volume, label: 'vídeo' };
+  }
+
   function buildNode(el){
     const node = document.createElement('div');
     node.className = 'el' + (el.ghost ? ' ghost' : '');
@@ -2545,16 +2762,8 @@ const Elements = (() => {
       iframe.setAttribute('frameborder', '0');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       wrap.appendChild(iframe);
-      if(State.role !== 'host'){
-        const ctr = document.createElement('div');
-        ctr.className = 'el-media-controls';
-        const pb = document.createElement('button');
-        pb.className = 'mc-btn'; pb.type = 'button'; pb.innerHTML = ICONS.play;
-        pb.addEventListener('click', (ev) => { ev.stopPropagation(); YouTubeSync.togglePlay(el.id); });
-        ctr.appendChild(pb);
-        wrap.appendChild(ctr);
-      }
       frame.appendChild(wrap);
+      buildVideoControls(el, frame);
     } else if(el.type === 'video'){
       const wrap = document.createElement('div');
       wrap.className = 'el-video-native';
@@ -2562,12 +2771,20 @@ const Elements = (() => {
       v.className = 'el-media';
       v.playsInline = true;
       v.preload = 'metadata';
-      v.controls = (State.role !== 'host');
+      v.controls = false;
       v.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
         ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
       v.setAttribute('playsinline', '');
       wrap.appendChild(v);
       frame.appendChild(wrap);
+      const controls = buildVideoControls(el, frame);
+      MediaCtl.register(el.id, v, controls);
+      ['playing', 'pause'].forEach(eventName => {
+        v.addEventListener(eventName, () => MediaCtl.syncPlayback(el.id));
+      });
+      ['play', 'pause', 'timeupdate', 'durationchange', 'volumechange', 'ended'].forEach(eventName => {
+        v.addEventListener(eventName, () => MediaCtl.paint(el.id));
+      });
     } else if(el.type === 'audio'){
       const wrap = document.createElement('div');
       wrap.className = 'el-audio-player';
@@ -2608,7 +2825,8 @@ const Elements = (() => {
       frame.appendChild(wrap);
       MediaCtl.register(el.id, audio, { btn: playBtn, fill, time });
       audio.addEventListener('play', () => MediaCtl.paint(el.id));
-      audio.addEventListener('pause', () => MediaCtl.paint(el.id));
+      audio.addEventListener('playing', () => MediaCtl.syncPlayback(el.id));
+      audio.addEventListener('pause', () => { MediaCtl.syncPlayback(el.id); MediaCtl.paint(el.id); });
       audio.addEventListener('timeupdate', () => MediaCtl.paint(el.id));
       audio.addEventListener('durationchange', () => MediaCtl.paint(el.id));
       audio.addEventListener('ended', () => MediaCtl.paint(el.id));
@@ -2754,7 +2972,11 @@ const Elements = (() => {
         iframe.dataset.loaded = '1';
         iframe.dataset.loop = String(wantLoop);
         iframe.dataset.fallback = '';
-        YouTubeSync.attach(el.id, iframe, el.content.videoId, el.content.start || 0, wantLoop);
+        YouTubeSync.attach(el.id, iframe, el.content.videoId, el.content.start || 0, wantLoop, {
+          btn: node.querySelector('.el-video-player-controls button'),
+          volume: node.querySelector('.el-player-volume'),
+          label: 'vídeo',
+        });
       }
     } else if(el.type === 'video'){
       const v = frame.querySelector('video');
@@ -2765,10 +2987,7 @@ const Elements = (() => {
         v.muted = !!el.content.muted;
         v.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
           ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
-        v.controls = (State.role !== 'host');
-        MediaCtl.register(el.id, v, { btn: null });
-        v.addEventListener('play', () => MediaCtl.paint(el.id));
-        v.addEventListener('pause', () => MediaCtl.paint(el.id));
+        v.controls = false;
         if(el.programKey || el.content.autoplay){
           // programação / autoplay: tenta tocar (mudo se bloqueado)
           try{ v.muted = !!el.content.muted; }catch(e){}
@@ -2776,7 +2995,7 @@ const Elements = (() => {
         }
       } else if(v && v.dataset.srcSet === '1'){
         v.loop = !!el.content.loop;
-        v.controls = (State.role !== 'host');
+        v.controls = false;
         if((el.programKey || el.content.autoplay) && v.paused){
           Utils.tryPlay(v);
         }
@@ -2844,7 +3063,7 @@ const Elements = (() => {
     node.addEventListener('pointerdown', (e) => {
       if(e.pointerType === 'mouse' && e.button !== 0) return;
       if(e.target === handle || e.target === rotHandle || e.target === delHandle || e.target === dragHandle) return;
-      if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.el-audio-play') || e.target.closest('.el-embed') || e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' || e.target.closest('.el-video-native'))) return;
+      if(e.target.closest && (e.target.closest('.el-video-player-controls') || e.target.closest('.el-audio-play') || e.target.closest('.el-embed') || e.target.tagName === 'AUDIO')) return;
       const el = State.elements.get(elId); if(!el) return;
       if(el.type === 'text' && e.target.classList && e.target.classList.contains('el-text') && e.target.isContentEditable) return;
       if(State.activeTool === 'brush' || State.activeTool === 'eraser') return;
@@ -2863,7 +3082,7 @@ const Elements = (() => {
     node.addEventListener('dblclick', (e) => {
       const el = State.elements.get(elId); if(!el) return;
       if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' ||
-         (e.target.closest && e.target.closest('.el-audio-play'))) return;
+         (e.target.closest && (e.target.closest('.el-audio-play') || e.target.closest('.el-video-player-controls')))) return;
 
       // multi-select: show group menu
       if(Selection.count() >= 2 && Selection.has(elId)){
@@ -3565,17 +3784,36 @@ const Actions = (() => {
   }
   async function addVideoFromFile(file, pos){
     if(!file) return;
-    if(file.size > 14 * 1024 * 1024){ UI.toast('Vídeo muito grande'); return; }
-    const raw = await Utils.fileToDataURL(file);
-    if(!Utils.isSafeMediaDataUrl(raw)){ UI.toast('Vídeo inválido'); return; }
+    if(file.size > 14 * 1024 * 1024){ UI.toast('Vídeo muito grande (limite: 14 MB)'); return; }
+    UI.showMediaProgress(file.name, 0, file.size, 'Carregando vídeo');
+    let raw;
+    try{
+      raw = await Utils.fileToDataURL(file, (loaded, total) => {
+        UI.showMediaProgress(file.name, loaded, total, 'Carregando vídeo');
+      });
+    }catch(err){
+      UI.hideMediaProgress();
+      UI.toast('Não foi possível ler o vídeo');
+      return;
+    }
+    if(!Utils.isSafeMediaDataUrl(raw)){
+      UI.hideMediaProgress();
+      UI.toast('Vídeo inválido');
+      return;
+    }
     const v = document.createElement('video');
     v.preload = 'metadata';
+    let finished = false;
     const finish = (ar) => {
+      if(finished) return;
+      finished = true;
       const content = { src: raw, name: file.name, playing: false, muted: false, loop: false, variants: {} };
       const opts = { w: 0.34, ar };
       if(pos) createElement('video', content, Object.assign(opts, { x: pos.x, y: pos.y }));
       else UI.enterPlacement('video', content, opts);
+      UI.finishMediaProgress(file.name);
     };
+    UI.showMediaProgress(file.name, file.size, file.size, 'Preparando vídeo');
     v.onloadedmetadata = () => finish(v.videoHeight / v.videoWidth || 0.5625);
     v.onerror = () => finish(0.5625);
     v.src = raw;
@@ -4554,6 +4792,9 @@ const UI = (() => {
   const tutorialModal = document.getElementById('tutorial-modal');
   const stageBounds = document.getElementById('stage-bounds');
   const placementHint = document.getElementById('placement-hint');
+  const mediaUpload = document.getElementById('media-upload');
+  const mediaUploadLabel = document.getElementById('media-upload-label');
+  const mediaUploadFill = document.getElementById('media-upload-fill');
 
   const peerNames = new Map();
   const peerColors = new Map();
@@ -4562,12 +4803,32 @@ const UI = (() => {
   myRoomCodeEl.textContent = generatedRoomCode;
 
   let toastTimer = null;
+  let mediaUploadTimer = null;
   function toastMsg(text){
     if(State.role === 'host') return;
     toast.textContent = text;
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+  }
+  function showMediaProgress(name, loaded, total, status){
+    if(!mediaUpload) return;
+    clearTimeout(mediaUploadTimer);
+    const percent = total > 0 ? Utils.clamp(Math.round(loaded / total * 100), 0, 100) : 0;
+    mediaUploadLabel.textContent = status + ': ' + name + ' (' + percent + '%)';
+    mediaUploadFill.style.width = percent + '%';
+    mediaUpload.classList.add('show');
+  }
+  function finishMediaProgress(name){
+    if(!mediaUpload) return;
+    mediaUploadLabel.textContent = 'Vídeo pronto: ' + name;
+    mediaUploadFill.style.width = '100%';
+    mediaUploadTimer = setTimeout(() => mediaUpload.classList.remove('show'), 1000);
+  }
+  function hideMediaProgress(){
+    if(!mediaUpload) return;
+    clearTimeout(mediaUploadTimer);
+    mediaUpload.classList.remove('show');
   }
 
   function setConnState(state, label){
@@ -4741,6 +5002,13 @@ const UI = (() => {
     }
 
     if(typing) return;
+
+    if((e.key === 'Delete' || e.key === 'Backspace') &&
+       State.role && State.role !== 'host' && Selection.count() > 0){
+      e.preventDefault();
+      Actions.removeElement(Selection.getPrimary());
+      return;
+    }
 
     if((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'g' || e.key === 'G')){
       if(State.role && State.role !== 'host'){
@@ -5421,7 +5689,7 @@ const UI = (() => {
     }
   }, 100));
 
-  return { toast: toastMsg, registerPeer, nameFor, colorFor, updatePeerBadge, setConnState, resetToGate, updateStageBounds, updateLiveEmbedRect, enterPlacement, exitPlacement };
+  return { toast: toastMsg, registerPeer, nameFor, colorFor, updatePeerBadge, setConnState, resetToGate, updateStageBounds, updateLiveEmbedRect, enterPlacement, exitPlacement, showMediaProgress, finishMediaProgress, hideMediaProgress };
 })();
 
 
