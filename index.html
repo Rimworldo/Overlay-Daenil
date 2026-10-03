@@ -60,6 +60,7 @@ body.host-mode #group-hud,
 body.host-mode #flyout-anim{display:none !important;}
 body.host-mode #elements-layer{pointer-events:none !important;}
 body.host-mode .el, body.host-mode .el *{pointer-events:none !important;}
+body.host-mode .el[data-type="audio"]{opacity:0 !important;}
 body.host-mode .el[data-hidden="1"] > .el-frame{opacity:0 !important;}
 
 /* Host: animação suave APENAS em movimento (não em create/remove) */
@@ -298,10 +299,26 @@ body.program-mode .el *{
 .el-video-native{width:100%;height:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;}
 .el-video-native video{width:100%;height:100%;display:block;background:#000;border-radius:6px;}
 
-/* Áudio nativo */
-.el-audio-native{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:4px 8px;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;}
-.el-audio-native audio{width:100%;height:32px;outline:none;}
-.el[data-type="audio"].host-hidden > .el-frame{opacity:0;}
+/* Player de áudio customizado */
+.el-audio-player{
+  width:100%;height:100%;min-width:0;display:flex;align-items:center;gap:9px;
+  padding:7px 10px;box-sizing:border-box;background:var(--panel-2);
+  border:1px solid var(--line-2);border-radius:8px;color:var(--text);
+  overflow:hidden;user-select:none;
+}
+.el-audio-player audio{display:none;}
+.el-audio-play{
+  flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  padding:0;border:1px solid var(--line-2);border-radius:50%;
+  background:var(--panel-3);color:var(--text);cursor:pointer;
+}
+.el-audio-play:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+.el-audio-play svg{width:14px;height:14px;}
+.el-audio-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.el-audio-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:600;}
+.el-audio-progress{height:3px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;}
+.el-audio-progress-fill{display:block;width:0;height:100%;background:var(--accent);}
+.el-audio-time{flex:none;color:var(--text-dim);font-size:10px;font-variant-numeric:tabular-nums;}
 
 .el-media-controls{position:absolute;bottom:8px;left:8px;z-index:5;display:flex;gap:6px;pointer-events:auto;}
 .mc-btn{
@@ -2076,10 +2093,6 @@ const MediaCtl = (() => {
   function register(id, el, ui){
     map.set(id, el);
     if(ui) uiMap.set(id, ui);
-    if(el){
-      if(typeof el.volume === 'number') el.volume = DEFAULT_VOLUME;
-      if('muted' in el) el.muted = false;
-    }
   }
   function unregister(id){ map.delete(id); uiMap.delete(id); }
   function get(id){ return map.get(id); }
@@ -2087,7 +2100,11 @@ const MediaCtl = (() => {
   function paint(id){
     const m = map.get(id), ui = uiMap.get(id);
     if(!m || !ui) return;
-    if(ui.btn) ui.btn.innerHTML = m.paused ? ICONS.play : ICONS.pause;
+    if(ui.btn){
+      ui.btn.innerHTML = m.paused ? ICONS.play : ICONS.pause;
+      ui.btn.setAttribute('aria-label', m.paused ? 'Reproduzir áudio' : 'Pausar áudio');
+      ui.btn.title = m.paused ? 'Reproduzir áudio' : 'Pausar áudio';
+    }
     if(ui.muteBtn) ui.muteBtn.innerHTML = m.muted ? ICONS.mute : ICONS.unmute;
     if(ui.fill && m.duration && isFinite(m.duration)) ui.fill.style.width = Math.min(100, (m.currentTime / m.duration) * 100) + '%';
     if(ui.time) ui.time.textContent = Utils.fmtTime(m.currentTime) + ' / ' + Utils.fmtTime(m.duration);
@@ -2128,6 +2145,8 @@ const MediaCtl = (() => {
     m.volume = Utils.clamp(v, 0, 1);
     if(m.volume > 0 && m.muted) m.muted = false;
     if(m.volume === 0) m.muted = true;
+    const el = State.elements.get(id);
+    if(el) el.content.volume = m.volume;
     Net.send({ type: Net.MSG.MEDIA_SYNC, id, action:'volume', time: m.currentTime, volume: m.volume, muted: m.muted });
     paint(id);
   }
@@ -2138,8 +2157,16 @@ const MediaCtl = (() => {
       if(typeof time === 'number' && isFinite(time)){
         if(action === 'seek' || Math.abs(m.currentTime - time) > 0.35) m.currentTime = time;
       }
-      if(typeof volume === 'number' && isFinite(volume)) m.volume = Utils.clamp(volume, 0, 1);
-      if(typeof muted === 'boolean') m.muted = muted;
+      if(typeof volume === 'number' && isFinite(volume)){
+        m.volume = Utils.clamp(volume, 0, 1);
+        const el = State.elements.get(id);
+        if(el) el.content.volume = m.volume;
+      }
+      if(typeof muted === 'boolean'){
+        m.muted = muted;
+        const el = State.elements.get(id);
+        if(el) el.content.muted = muted;
+      }
       if(action === 'play'){ if(m.ended){ try{ m.currentTime = 0; }catch(e){} } Utils.tryPlay(m); }
       else if(action === 'pause') m.pause();
       else if(action === 'mute') m.muted = true;
@@ -2209,7 +2236,13 @@ const YouTubeSync = (() => {
         events: {
           onReady: (e) => {
             try{
-              if(isHost){ e.target.unMute(); e.target.setVolume(Math.round(DEFAULT_VOLUME * 100)); }
+              if(isHost){
+                const el = State.elements.get(elId);
+                const volume = el && typeof el.content.volume === 'number'
+                  ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+                e.target.unMute();
+                e.target.setVolume(Math.round(volume * 100));
+              }
               else { e.target.mute(); e.target.setVolume(0); }
               if(start && start > 0) e.target.seekTo(start, true);
               e.target.playVideo();
@@ -2259,6 +2292,10 @@ const YouTubeSync = (() => {
     else { cmd(id, 'playVideo'); Net.send({ type: Net.MSG.YT_SYNC, id, action:'play' }); }
   }
   function applyRemote(id, action, time, volume){
+    if(typeof volume === 'number' && isFinite(volume)){
+      const el = State.elements.get(id);
+      if(el) el.content.volume = Utils.clamp(volume, 0, 1);
+    }
     if(action === 'play') cmd(id, 'playVideo');
     else if(action === 'pause') cmd(id, 'pauseVideo');
     else if(action === 'unmute'){ cmd(id, 'unMute'); cmd(id, 'setVolume', [Math.round(DEFAULT_VOLUME * 100)]); }
@@ -2271,9 +2308,12 @@ const YouTubeSync = (() => {
   }
   function seek(id, time){ cmd(id, 'seekTo', [time, true]); Net.send({ type: Net.MSG.YT_SYNC, id, action:'seek', time }); }
   function setVolume(id, v){
-    cmd(id, 'setVolume', [Math.round(v * 100)]);
-    if(v > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
-    Net.send({ type: Net.MSG.YT_SYNC, id, action:'volume', volume: v });
+    const volume = Utils.clamp(v, 0, 1);
+    const el = State.elements.get(id);
+    if(el) el.content.volume = volume;
+    cmd(id, 'setVolume', [Math.round(volume * 100)]);
+    if(volume > 0) cmd(id, 'unMute'); else cmd(id, 'mute');
+    Net.send({ type: Net.MSG.YT_SYNC, id, action:'volume', volume });
   }
   function getTime(id){
     const ent = players.get(id); if(!ent) return { time: 0, dur: 0, paused: true };
@@ -2286,11 +2326,20 @@ const YouTubeSync = (() => {
       };
     }catch(e){ return { time: 0, dur: 0, paused: true }; }
   }
+  function getVolume(id){
+    const ent = players.get(id);
+    const el = State.elements.get(id);
+    if(!ent) return (el && typeof el.content.volume === 'number')
+      ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+    try{ return Utils.clamp(ent.player.getVolume() / 100, 0, 1); }
+    catch(e){ return (el && typeof el.content.volume === 'number')
+      ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME; }
+  }
   function destroy(id){
     const ent = players.get(id);
     if(ent){ try{ ent.player.destroy(); }catch(e){} players.delete(id); }
   }
-  return { attach, togglePlay, applyRemote, seek, setVolume, getTime, destroy };
+  return { attach, togglePlay, applyRemote, seek, setVolume, getTime, getVolume, destroy };
 })();
 
 /* ---------- MediaTick (host master a cada 5s) ---------- */
@@ -2310,7 +2359,7 @@ const MediaTick = (() => {
           time: info.time,
           duration: info.dur,
           paused: info.paused,
-          volume: DEFAULT_VOLUME,
+          volume: YouTubeSync.getVolume(el.id),
           muted: State.role !== 'host'
         });
       }
@@ -2514,20 +2563,55 @@ const Elements = (() => {
       v.playsInline = true;
       v.preload = 'metadata';
       v.controls = (State.role !== 'host');
-      v.volume = DEFAULT_VOLUME;
+      v.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
+        ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
       v.setAttribute('playsinline', '');
       wrap.appendChild(v);
       frame.appendChild(wrap);
     } else if(el.type === 'audio'){
       const wrap = document.createElement('div');
-      wrap.className = 'el-audio-native';
+      wrap.className = 'el-audio-player';
+      const playBtn = document.createElement('button');
+      playBtn.className = 'el-audio-play';
+      playBtn.type = 'button';
+      playBtn.innerHTML = ICONS.play;
+      playBtn.setAttribute('aria-label', 'Reproduzir áudio');
+      playBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        MediaCtl.localToggle(el.id);
+      });
+      const meta = document.createElement('div');
+      meta.className = 'el-audio-meta';
+      const name = document.createElement('span');
+      name.className = 'el-audio-name';
+      name.textContent = el.content.name || 'Áudio';
+      const progress = document.createElement('div');
+      progress.className = 'el-audio-progress';
+      const fill = document.createElement('span');
+      fill.className = 'el-audio-progress-fill';
+      progress.appendChild(fill);
+      meta.appendChild(name);
+      meta.appendChild(progress);
+      const time = document.createElement('span');
+      time.className = 'el-audio-time';
+      time.textContent = '0:00 / 0:00';
       const audio = document.createElement('audio');
-      audio.controls = true;
       audio.preload = 'metadata';
-      audio.volume = DEFAULT_VOLUME;
+      audio.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
+        ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+      audio.muted = !!el.content.muted;
+      wrap.appendChild(playBtn);
+      wrap.appendChild(meta);
+      wrap.appendChild(time);
       wrap.appendChild(audio);
       frame.appendChild(wrap);
-      if(State.role === 'host') node.classList.add('host-hidden');
+      MediaCtl.register(el.id, audio, { btn: playBtn, fill, time });
+      audio.addEventListener('play', () => MediaCtl.paint(el.id));
+      audio.addEventListener('pause', () => MediaCtl.paint(el.id));
+      audio.addEventListener('timeupdate', () => MediaCtl.paint(el.id));
+      audio.addEventListener('durationchange', () => MediaCtl.paint(el.id));
+      audio.addEventListener('ended', () => MediaCtl.paint(el.id));
     } else if(el.type === 'embed'){
       const wrap = document.createElement('div');
       wrap.className = 'el-embed';
@@ -2615,11 +2699,8 @@ const Elements = (() => {
     if(el.hidden) node.dataset.hidden = '1';
     else delete node.dataset.hidden;
 
-    if(el.type === 'audio' && State.role === 'host'){
-      node.style.opacity = '0';
-    } else {
-      node.style.opacity = (el.opacity == null ? 1 : el.opacity);
-    }
+    node.style.opacity = (el.type === 'audio' && State.role === 'host')
+      ? '0' : (el.opacity == null ? 1 : el.opacity);
 
     const ownerTag = frame.querySelector('.el-owner-tag');
     if(ownerTag){
@@ -2682,7 +2763,8 @@ const Elements = (() => {
         v.dataset.srcSet = '1';
         v.loop = !!el.content.loop;
         v.muted = !!el.content.muted;
-        v.volume = DEFAULT_VOLUME;
+        v.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
+          ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
         v.controls = (State.role !== 'host');
         MediaCtl.register(el.id, v, { btn: null });
         v.addEventListener('play', () => MediaCtl.paint(el.id));
@@ -2705,9 +2787,9 @@ const Elements = (() => {
         audio.src = el.content.src;
         audio.dataset.srcSet = '1';
         audio.loop = !!el.content.loop;
-        audio.volume = DEFAULT_VOLUME;
-        el._audioEl = audio;
-        MediaCtl.register(el.id, audio, { btn: null });
+        audio.volume = (typeof el.content.volume === 'number' && isFinite(el.content.volume))
+          ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
+        audio.muted = !!el.content.muted;
         audio.addEventListener('play', () => MediaCtl.paint(el.id));
         audio.addEventListener('pause', () => MediaCtl.paint(el.id));
         if(el.programKey || el.content.autoplay){
@@ -2762,7 +2844,7 @@ const Elements = (() => {
     node.addEventListener('pointerdown', (e) => {
       if(e.pointerType === 'mouse' && e.button !== 0) return;
       if(e.target === handle || e.target === rotHandle || e.target === delHandle || e.target === dragHandle) return;
-      if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.el-embed') || e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' || e.target.closest('.el-audio-native') || e.target.closest('.el-video-native'))) return;
+      if(e.target.closest && (e.target.closest('.el-media-controls') || e.target.closest('.el-audio-play') || e.target.closest('.el-embed') || e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' || e.target.closest('.el-video-native'))) return;
       const el = State.elements.get(elId); if(!el) return;
       if(el.type === 'text' && e.target.classList && e.target.classList.contains('el-text') && e.target.isContentEditable) return;
       if(State.activeTool === 'brush' || State.activeTool === 'eraser') return;
@@ -2780,7 +2862,8 @@ const Elements = (() => {
 
     node.addEventListener('dblclick', (e) => {
       const el = State.elements.get(elId); if(!el) return;
-      if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO') return;
+      if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' ||
+         (e.target.closest && e.target.closest('.el-audio-play'))) return;
 
       // multi-select: show group menu
       if(Selection.count() >= 2 && Selection.has(elId)){
@@ -4004,7 +4087,7 @@ function handleMessageAsClient(msg, from){
   }
 }
 
-/* ---------- Popup (consertado, com volume 15% e sem slider de tamanho de texto) ---------- */
+/* ---------- Popup (volume padrão inicial de 15%, sem slider de tamanho de texto) ---------- */
 const Popup = (() => {
   const popup = document.getElementById('element-popup');
   const titleEl = document.getElementById('ep-title');
@@ -4217,7 +4300,12 @@ const Popup = (() => {
       volRow.innerHTML = '<span>Volume</span>';
       const volSlider = document.createElement('input');
       volSlider.type = 'range'; volSlider.min = '0'; volSlider.max = '100';
-      volSlider.value = String(Math.round(DEFAULT_VOLUME * 100)); // 15
+      const media = el.type === 'youtube' ? null : MediaCtl.get(el.id);
+      const volume = media && typeof media.volume === 'number'
+        ? media.volume
+        : (typeof el.content.volume === 'number' && isFinite(el.content.volume)
+          ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME);
+      volSlider.value = String(Math.round(volume * 100));
       const volVal = document.createElement('span'); volVal.textContent = volSlider.value + '%';
       volSlider.addEventListener('input', (ev) => {
         ev.stopPropagation();
@@ -5465,6 +5553,10 @@ const SelBar = (() => {
     const count = document.getElementById('sel-count');
     if(count) count.textContent = n + (n === 1 ? ' selecionado' : ' selecionados');
     const ids = Selection.getIds();
+    const audioSelected = ids.some(id => {
+      const e = State.elements.get(id);
+      return e && e.type === 'audio';
+    });
     const mine = ids.filter(id => {
       const e = State.elements.get(id);
       return e && e.userId === State.myUserId;
@@ -5476,8 +5568,14 @@ const SelBar = (() => {
     });
     const gBtn = document.getElementById('sel-group');
     const uBtn = document.getElementById('sel-ungroup');
+    const aBtn = document.getElementById('sel-anim');
     if(gBtn) gBtn.style.display = canGroup ? '' : 'none';
     if(uBtn) uBtn.style.display = grouped ? '' : 'none';
+    if(aBtn) aBtn.style.display = audioSelected ? 'none' : '';
+    if(audioSelected){
+      if(gBtn) gBtn.style.display = 'none';
+      if(uBtn) uBtn.style.display = 'none';
+    }
   }
   function bind(){
     const g = document.getElementById('sel-group');
