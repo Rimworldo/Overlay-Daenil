@@ -375,6 +375,10 @@ body.program-mode .el:not(.ghost){opacity:.18;pointer-events:none;}
 .el[data-hidden="1"] > .el-frame{opacity:.4;}
 body.host-mode .el[data-hidden="1"]{visibility:hidden;}
 
+/* Multi-selection drag visual */
+.el.dragging{ cursor:grabbing; }
+body.multi-dragging #elements-layer{ cursor:grabbing; }
+
 .remote-cursor{
   position:absolute;top:0;left:0;width:20px;height:20px;pointer-events:none !important;
   z-index:600;transform:translate(-2px,-2px);
@@ -803,7 +807,8 @@ body.host-mode #group-menu { display: none !important; }
       <ul>
         <li>Clique em um item para selecionar. <b>Ctrl/Cmd + clique</b> adiciona à seleção.</li>
         <li><b>Shift + arraste no fundo</b> para selecionar vários de uma vez (marquee).</li>
-        <li>Com 2+ itens selecionados, use a barra inferior: <b>Agrupar</b>, <b>Desagrupar</b>, <b>Animar</b>, <b>Remover</b>.</li>
+        <li>Com 2+ itens selecionados, arraste qualquer um deles: <b>todos se movem juntos</b> como uma entidade única.</li>
+        <li>Use a barra inferior: <b>Agrupar</b>, <b>Desagrupar</b>, <b>Animar</b>, <b>Remover</b>.</li>
         <li>Itens agrupados ficam juntos: clicar em qualquer um seleciona o grupo inteiro. Arrastar, rotacionar e redimensionar age no grupo.</li>
         <li>Atalho: <b>Ctrl+G</b> agrupa, <b>Ctrl+Shift+G</b> desagrupa, <b>Ctrl+A</b> seleciona todos os seus itens.</li>
       </ul>
@@ -814,7 +819,7 @@ body.host-mode #group-menu { display: none !important; }
       <ul>
         <li><b>Pulsar</b> — cresce e diminui. Ajuste velocidade e quanto cresce.</li>
         <li><b>Rodar</b> — gira continuamente. Ajuste velocidade e direção.</li>
-        <li><b>Mover</b> — arraste os pontos <b>A</b> (início) e <b>B</b> (fim) no canvas. Escolha duração, modo (ida e volta / loop / uma vez) e suavização.</li>
+        <li><b>Mover</b> — arraste os pontos <b>A</b> (início) e <b>B</b> (fim) no canvas. Escolha duração, modo (ida e volta / loop / uma vez) e suavização. Ao selecionar vários itens, todos mantêm o espaçamento relativo durante o movimento.</li>
         <li><b>Orbitar</b> — gira em volta de um centro. Arraste o ponto <b>C</b> para definir o centro; ajuste raio e velocidade.</li>
         <li>Pré-visualização ao vivo enquanto edita. Clique <b>Aplicar</b> para salvar ou <b>Remover</b> para tirar a animação.</li>
       </ul>
@@ -823,7 +828,7 @@ body.host-mode #group-menu { display: none !important; }
     <div class="tut-section">
       <h4>Handles nos itens</h4>
       <ul>
-        <li><b>Verde (canto)</b> — arrastar o item.</li>
+        <li><b>Verde (canto)</b> — arrastar o item (ou todo o grupo selecionado).</li>
         <li><b>Azul (topo)</b> — rotacionar (grupos giram em torno do centro do grupo).</li>
         <li><b>Cantos de resize</b> — redimensionar.</li>
         <li><b>Vermelho (X)</b> — apagar.</li>
@@ -833,9 +838,9 @@ body.host-mode #group-menu { display: none !important; }
     <div class="tut-section">
       <h4>Atalhos</h4>
       <ul>
-        <li><b>Delete / Backspace</b> — remove o selecionado.</li>
+        <li><b>Delete / Backspace</b> — remove o(s) selecionado(s).</li>
         <li><b>Ctrl+C / Ctrl+V</b> — copiar e colar seus itens.</li>
-        <li><b>Ctrl+Z</b> — desfazer.</li>
+        <li><b>Ctrl+Z / Ctrl+Y</b> — desfazer / refazer.</li>
         <li><b>Esc</b> — cancela ferramenta / fecha editor de animação.</li>
       </ul>
     </div>
@@ -1080,7 +1085,7 @@ body.host-mode #group-menu { display: none !important; }
       </div>
     </div>
     <div class="anim-cfg" id="anim-cfg-move">
-      <p class="anim-hint">Arraste os pontos <b>A</b> (início) e <b>B</b> (fim) no canvas. A linha mostra o trajeto.</p>
+      <p class="anim-hint">Arraste os pontos <b>A</b> (início) e <b>B</b> (fim) no canvas. A linha mostra o trajeto. Com vários itens selecionados, todos mantêm o espaçamento relativo.</p>
       <label>Duração (s)</label>
       <input type="range" id="anim-move-dur" min="0.3" max="12" step="0.1" value="2">
       <label>Modo</label>
@@ -1164,10 +1169,10 @@ body.host-mode #group-menu { display: none !important; }
 
 <script>
 /* ==========================================================================
-   STREAMCANVAS — v3.3 (grupos estáveis, marquee correto, ferramenta Animar, handles visíveis)
-   - Tick de mídia: 5s (era 2s)
-   - Texto com caixa justa (fitTextBox) e tamanho base fixo 28px
-   - Volume inicial padrão: 15%
+   STREAMCANVAS — v3.4
+   - Sistema de seleção múltipla reescrito: arraste move tudo como entidade única
+   - Sistema de animação: Mover/Orbitar preserva offsets relativos no multi-select
+   - Correções leves e melhorias de UX
    ========================================================================== */
 
 const ICONS = {
@@ -1185,7 +1190,7 @@ const TEXT_FONTS = ['Segoe UI', 'Arial', 'Helvetica', 'Verdana', 'Georgia', 'Tim
 const DEFAULT_VOLUME = 0.15;
 const TEXT_BASE_FONT_SIZE = 28;
 const TEXT_BASE_W = 0.26;
-const TEXT_DESIGN_W = 1920; /* design width so host & guest scale text the same */
+const TEXT_DESIGN_W = 1920;
 
 /* ---------- Utils ---------- */
 const Utils = (() => {
@@ -1293,7 +1298,6 @@ const Utils = (() => {
       img.src = dataUrl;
     });
   }
-  // Measure text box height given width in canvas px and the actual rendered font size
   function measureTextBox(text, cssWidthPx, fontSize, fontWeight, fontFamily, align){
     const dummy = document.createElement('div');
     dummy.style.position = 'absolute';
@@ -1311,10 +1315,8 @@ const Utils = (() => {
     dummy.style.fontWeight = fontWeight || '500';
     dummy.style.fontFamily = fontFamily || "'Segoe UI', sans-serif";
     dummy.style.textAlign = align || 'center';
-    // Usa o mesmo conteúdo (espaços preservados via pre-wrap)
     dummy.textContent = (text && text.length) ? text : ' ';
     document.body.appendChild(dummy);
-    // +1px de folga para evitar corte por subpixel / antialiasing
     const h = Math.ceil(dummy.offsetHeight || 1) + 1;
     document.body.removeChild(dummy);
     return h;
@@ -1379,7 +1381,6 @@ const Selection = (() => {
       const g = State.groups.get(gid);
       if(g && g.memberIds) g.memberIds.forEach(id => { if(State.elements.has(id)) out.add(id); });
       else {
-        // fallback scan
         State.elements.forEach(el => { if(el.groupId === gid) out.add(el.id); });
       }
     });
@@ -1451,7 +1452,26 @@ const Selection = (() => {
     paint();
     refreshUI();
   }
-  return { clear, setSingle, toggle, add, paint, getIds, getPrimary, count, has, selectMany, expandIds };
+  /* Returns list of ids that should be dragged together when starting a drag from `id`. */
+  function dragGroupFor(id){
+    const el = State.elements.get(id);
+    if(!el) return [];
+    // 1) If clicking on an element that is already part of a multi-selection, drag the whole selection
+    if(State.selectedElIds.size > 1 && State.selectedElIds.has(id)){
+      return Array.from(State.selectedElIds).filter(i => State.elements.has(i));
+    }
+    // 2) If element is in a group, drag all group members
+    if(el.groupId){
+      const g = State.groups.get(el.groupId);
+      if(g && g.memberIds) return g.memberIds.filter(i => State.elements.has(i));
+      const out = [];
+      State.elements.forEach(e => { if(e.groupId === el.groupId) out.push(e.id); });
+      return out;
+    }
+    // 3) Otherwise just this element
+    return [id];
+  }
+  return { clear, setSingle, toggle, add, paint, getIds, getPrimary, count, has, selectMany, expandIds, dragGroupFor };
 })();
 
 
@@ -1470,7 +1490,6 @@ const Groups = (() => {
       const el = State.elements.get(id);
       return { id, x: el.x, y: el.y, w: el.w, ar: el.ar, rot: el.rot };
     });
-    // anchor = centroid
     let cx = 0, cy = 0;
     members.forEach(m => { cx += m.x; cy += m.y; });
     cx /= members.length; cy /= members.length;
@@ -1487,8 +1506,6 @@ const Groups = (() => {
     });
     Net.send({ type: Net.MSG.GROUP_CREATE, group: { id: gid, memberIds: ids, cx, cy, userId: State.myUserId } });
     Selection.selectMany(ids);
-    try{ if(typeof SelBar !== 'undefined') SelBar.refresh(); }catch(e){}
-    try{ if(typeof GroupHud !== 'undefined') GroupHud.refresh(); }catch(e){}
     UI.toast('Grupo criado (' + ids.length + ' itens)');
     return gid;
   }
@@ -1516,35 +1533,6 @@ const Groups = (() => {
     });
     gids.forEach(breakGroup);
   }
-  function moveGroup(gid, dx, dy){
-    const g = State.groups.get(gid); if(!g) return;
-    g.cx += dx; g.cy += dy;
-    (g.memberIds || []).forEach(id => {
-      const el = State.elements.get(id); if(!el) return;
-      el.x = Utils.clamp(el.x + dx, -2, 3);
-      el.y = Utils.clamp(el.y + dy, -2, 3);
-      const node = Elements.domNodes.get(id);
-      if(node) Elements.positionNode(node, el);
-      Elements.throttledMove(id);
-    });
-  }
-  function scaleGroup(gid, factor, aroundId){
-    const g = State.groups.get(gid); if(!g) return;
-    const pivot = State.elements.get(aroundId);
-    if(!pivot) return;
-    (g.memberIds || []).forEach(id => {
-      if(id === aroundId) return;
-      const el = State.elements.get(id); if(!el) return;
-      // scale relative to pivot
-      el.x = pivot.x + (el.x - pivot.x) * factor;
-      el.y = pivot.y + (el.y - pivot.y) * factor;
-      el.w = Utils.clamp(el.w * factor, 0.02, 2.5);
-      if(el.type === 'text') Elements.fitTextBox(el);
-      const node = Elements.domNodes.get(id);
-      if(node){ Elements.positionNode(node, el); Elements.updateNodeContent(node, el); }
-      Elements.throttledResize(id);
-    });
-  }
   function applyLocalGroup(g){
     if(!g || !g.id) return;
     State.groups.set(g.id, g);
@@ -1553,7 +1541,7 @@ const Groups = (() => {
       if(el){ el.groupId = g.id; }
     });
   }
-  return { createFromSelection, breakGroup, breakSelected, moveGroup, scaleGroup, applyLocalGroup };
+  return { createFromSelection, breakGroup, breakSelected, applyLocalGroup };
 })();
 
 /* ---------- Animations ---------- */
@@ -1746,6 +1734,64 @@ const Anims = (() => {
     if(box) box.classList.add('show');
   }
 
+  /* Per-element animation generator that preserves relative offsets in multi-selection.
+     For 'move': each element moves by the same (dx, dy) delta as the primary element.
+     For 'orbit': each element orbits around a point offset by its relative position from the primary. */
+  function buildAnimForElement(el, type){
+    if(!draft || !draft.type) return null;
+    const primary = primaryEl();
+    if(type === 'move'){
+      const pFromX = draft.fromX != null ? draft.fromX : el.x;
+      const pFromY = draft.fromY != null ? draft.fromY : el.y;
+      const pToX = draft.toX != null ? draft.toX : pFromX + 0.15;
+      const pToY = draft.toY != null ? draft.toY : pFromY;
+      // delta relative to primary element's start position (draft was created from primary)
+      const refX = primary ? primary.x : el.x;
+      const refY = primary ? primary.y : el.y;
+      const dx = pToX - pFromX;
+      const dy = pToY - pFromY;
+      // fromX/Y anchored to each element's own position at time of applying
+      const fromX = el.x;
+      const fromY = el.y;
+      const toX = fromX + dx;
+      const toY = fromY + dy;
+      return {
+        type: 'move',
+        fromX, fromY, toX, toY,
+        duration: draft.duration || 2,
+        mode: draft.mode || 'pingpong',
+        ease: draft.ease || 'smooth',
+        _t0: performance.now()
+      };
+    }
+    if(type === 'orbit'){
+      const primaryRef = primary || el;
+      const relX = el.x - primaryRef.x;
+      const relY = el.y - primaryRef.y;
+      const cx = (draft.cx != null ? draft.cx : primaryRef.x) + relX;
+      const cy = (draft.cy != null ? draft.cy : primaryRef.y) + relY;
+      return {
+        type: 'orbit',
+        cx, cy,
+        radius: draft.radius || 0.12,
+        speed: draft.speed || 60,
+        dir: draft.dir || 1,
+        baseAng: draft.baseAng || 0,
+        _t0: performance.now()
+      };
+    }
+    if(type === 'spin'){
+      return Object.assign({}, draft, {
+        baseRot: el.rot || 0,
+        _t0: performance.now()
+      });
+    }
+    if(type === 'pulse'){
+      return Object.assign({}, draft, { _t0: performance.now() });
+    }
+    return Object.assign({}, draft, { _t0: performance.now() });
+  }
+
   function pickType(type){
     const el = primaryEl();
     if(!el){ UI.toast('Selecione um item primeiro'); return; }
@@ -1809,12 +1855,12 @@ const Anims = (() => {
         const el = State.elements.get(id);
         if(el) saved.set(id, { x: el.x, y: el.y, rot: el.rot || 0, anim: el.anim ? Object.assign({}, el.anim) : null });
       }
-      const anim = Object.assign({}, draft, { _t0: performance.now() });
-      if(draft.type === 'spin'){
-        const el = State.elements.get(id);
-        anim.baseRot = el ? (el.rot || 0) : 0;
-      }
-      setAnim(id, anim, { silent: true });
+      const el = State.elements.get(id);
+      if(!el) return;
+      // For move/orbit preview, we must not shift the element from its current position
+      // (otherwise the preview jumps). We save the original, then apply the anim.
+      const anim = buildAnimForElement(el, draft.type);
+      if(anim) setAnim(id, anim, { silent: true });
     });
     applied = false;
   }
@@ -1837,12 +1883,9 @@ const Anims = (() => {
     if(!ids.length){ UI.toast('Selecione um item seu'); return; }
     ids.forEach(id => {
       const el = State.elements.get(id);
-      const anim = Object.assign({}, draft, { _t0: performance.now() });
-      if(draft.type === 'spin') anim.baseRot = el ? (el.rot || 0) : 0;
-      if(draft.type === 'move'){
-        // keep from/to from draft (handles)
-      }
-      setAnim(id, anim);
+      if(!el) return;
+      const anim = buildAnimForElement(el, draft.type);
+      if(anim) setAnim(id, anim);
     });
     applied = true;
     saved.clear();
@@ -1862,7 +1905,6 @@ const Anims = (() => {
   function openEditor(){
     const ids = currentIds();
     if(!ids.length){ UI.toast('Selecione um item seu primeiro'); return; }
-    // close other flyouts
     document.querySelectorAll('.flyout.open').forEach(f => f.classList.remove('open'));
     const fly = document.getElementById('flyout-anim');
     if(fly) fly.classList.add('open');
@@ -1873,7 +1915,6 @@ const Anims = (() => {
     if(el && el.anim && el.anim.type){
       draft = Object.assign({}, el.anim);
       showCfg(draft.type);
-      // sync sliders
       if(draft.type === 'pulse'){
         const s = document.getElementById('anim-pulse-speed'); if(s) s.value = draft.speed || 1.2;
         const sc = document.getElementById('anim-pulse-scale'); if(sc) sc.value = draft.scale || 15;
@@ -1882,6 +1923,7 @@ const Anims = (() => {
       } else if(draft.type === 'move'){
         const d = document.getElementById('anim-move-dur'); if(d) d.value = draft.duration || 2;
         const m = document.getElementById('anim-move-mode'); if(m) m.value = draft.mode || 'pingpong';
+        const e = document.getElementById('anim-move-ease'); if(e) e.value = draft.ease || 'smooth';
       } else if(draft.type === 'orbit'){
         const r = document.getElementById('anim-orbit-radius'); if(r) r.value = draft.radius || 0.12;
         const s = document.getElementById('anim-orbit-speed'); if(s) s.value = draft.speed || 60;
@@ -1983,7 +2025,6 @@ const Chat = (() => {
     input().value = '';
     const msg = { type: Net.MSG.CHAT, userId: State.myUserId, name: State.myName, color: State.myColor, text: v };
     Net.send(msg);
-    // host path handles echo; for client show locally then host relays
     if(State.role !== 'host') append(State.myName, State.myColor, v, true);
   }
   function receive(msg){
@@ -2654,7 +2695,6 @@ const Elements = (() => {
     if(State.programMode && !fresh.ghost && (!opts || opts.silent !== true)){
       fresh.ghost = true;
     }
-    // Text: ensure baseW and fontSize
     if(fresh.type === 'text'){
       if(fresh.content.fontSize == null) fresh.content.fontSize = TEXT_BASE_FONT_SIZE;
       if(fresh.content.baseW == null) fresh.content.baseW = TEXT_BASE_W;
@@ -2889,7 +2929,6 @@ const Elements = (() => {
     if(old === newText) return;
     txt.dataset.lastText = newText;
 
-    // Textos longos ou mudanças grandes: render direto (preserva espaços com pre-wrap)
     if(Math.abs(newText.length - old.length) > 40 || newText.length > 120){
       txt.textContent = newText;
       return;
@@ -2915,25 +2954,20 @@ const Elements = (() => {
     const c = Utils.getCanvasRect();
     const pxW = Math.max(24, el.w * c.w);
     const text = el.content.text || ' ';
-    // Fonte escala com a largura da caixa: quanto maior a caixa, maior o texto
     const baseF = el.content.fontSize || TEXT_BASE_FONT_SIZE;
     const baseW = el.content.baseW || TEXT_BASE_W;
     const scale = baseW ? (el.w / baseW) : 1;
-    /* Scale by canvas width so host (OBS) and guest see identical relative size */
     const designW = (typeof TEXT_DESIGN_W === 'number' && TEXT_DESIGN_W > 0) ? TEXT_DESIGN_W : 1920;
     const fontSize = Math.max(6, baseF * scale * (c.w / designW));
     const weight = el.content.bold ? '700' : '500';
     const family = el.content.fontFamily || "'Segoe UI', sans-serif";
     const align = el.content.align || 'center';
-    // Mede a altura real com o tamanho de fonte que será renderizado
-    // assim a caixa fica sempre justa em volta do texto (sem vazamento)
     const hPx = Utils.measureTextBox(text, pxW, fontSize, weight, family, align);
     const ar = hPx / pxW;
     el.ar = Math.max(0.03, Math.min(8.0, ar));
     const node = domNodes.get(el.id);
     if(node){
       positionNode(node, el);
-      // aplica o fontSize calculado imediatamente no DOM
       const txt = node.querySelector('.el-text');
       if(txt) txt.style.fontSize = fontSize + 'px';
     }
@@ -2978,13 +3012,11 @@ const Elements = (() => {
       txt.style.justifyContent = align === 'left' ? 'flex-start' : (align === 'right' ? 'flex-end' : 'center');
       txt.style.textAlign = align;
       txt.style.opacity = (el.content.text || '').trim() === '' ? '0' : '1';
-      // Contorno personalizável
       if(el.content.outline){
         const ow = Math.max(1, Math.min(12, el.content.outlineWidth || 2));
         const oc = el.content.outlineColor || '#000000';
         txt.style.webkitTextStroke = ow + 'px ' + oc;
         txt.style.paintOrder = 'stroke fill';
-        // sombra extra para legibilidade
         const s = Math.max(1, Math.round(ow * 0.6));
         txt.style.textShadow = [
           s+'px 0 0 '+oc, (-s)+'px 0 0 '+oc, '0 '+s+'px 0 '+oc, '0 '+(-s)+'px 0 '+oc,
@@ -3019,7 +3051,6 @@ const Elements = (() => {
           ? Utils.clamp(el.content.volume, 0, 1) : DEFAULT_VOLUME;
         v.controls = false;
         if(el.programKey || el.content.autoplay){
-          // programação / autoplay: tenta tocar (mudo se bloqueado)
           try{ v.muted = !!el.content.muted; }catch(e){}
           Utils.tryPlay(v);
         }
@@ -3084,7 +3115,8 @@ const Elements = (() => {
       } else if(!Selection.has(elId)){
         Selection.setSingle(elId);
       } else {
-        // already selected — keep multi set for group drag
+        // Already part of the current (multi) selection — keep it intact
+        // so dragging moves the whole selection as a single entity.
         State.selectedElId = elId;
         Selection.paint();
       }
@@ -3114,13 +3146,11 @@ const Elements = (() => {
       if(e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO' ||
          (e.target.closest && (e.target.closest('.el-audio-play') || e.target.closest('.el-video-player-controls')))) return;
 
-      // multi-select: show group menu
       if(Selection.count() >= 2 && Selection.has(elId)){
         e.stopPropagation();
         GroupMenu.show(e.clientX, e.clientY);
         return;
       }
-      // single with group: allow ungroup via menu
       if(el.groupId && Selection.count() <= 1){
         e.stopPropagation();
         GroupMenu.show(e.clientX, e.clientY, true);
@@ -3139,7 +3169,6 @@ const Elements = (() => {
           return;
         }
         e.stopPropagation();
-        // Garante texto puro (sem spans da animação) para o contentEditable preservar espaços
         const currentText = (State.elements.get(elId) && State.elements.get(elId).content.text) || '';
         txt.textContent = currentText;
         txt.dataset.lastText = currentText;
@@ -3148,7 +3177,6 @@ const Elements = (() => {
         const sel = window.getSelection();
         if(sel){ const rg = document.createRange(); rg.selectNodeContents(txt); sel.removeAllRanges(); sel.addRange(rg); }
         const push = Utils.throttle(() => {
-          // innerText preserva espaços e quebras de linha
           const val = (txt.innerText || '').replace(/\u00A0/g, ' ').slice(0, 600);
           const cur = State.elements.get(elId); if(!cur) return;
           cur.content.text = val;
@@ -3162,11 +3190,9 @@ const Elements = (() => {
           const cur = State.elements.get(elId);
           if(cur){
             cur.content.text = val;
-            // limpa lastText para a animação re-renderizar com espaços corretos
             txt.dataset.lastText = '';
             fitTextBox(cur);
             Net.send({ type: Net.MSG.EL_UPDATE, id: elId, patch: { content: { text: val } } });
-            // re-render com animação (agora com &nbsp; para espaços)
             updateNodeContent(node, cur);
           }
         }, { once: true });
@@ -3214,42 +3240,28 @@ const Elements = (() => {
            fitTextBox };
 })();
 
-/* ---------- DragSession ---------- */
+/* ---------- DragSession (movimento multi-seleção como entidade única) ---------- */
 const DragSession = (() => {
   let active = false;
   let pointerId = null;
   let type = null;
-  let elId = null;
-  let node = null;
-  let dOX = 0, dOY = 0;
-  let rsW = 0, rsAr = 1, rsDist = 1;
-  let snapshots = [];
-  let primaryStart = { x: 0, y: 0 };
-  let rotCentroid = { x: 0, y: 0 };
-  let rotStartAng = 0;
-  const involved = new Set();
+  let elId = null;              // primary element being interacted with
+  let node = null;              // primary node
+  let dragIds = [];             // all element ids being manipulated
+  let snapshots = [];           // { id, x, y, w, ar, rot, px, py } at drag start
 
-  function idsFor(el){
-    if(!el) return [];
-    if(State.selectedElIds && State.selectedElIds.has(el.id) && State.selectedElIds.size > 1){
-      return Array.from(State.selectedElIds).filter(id => State.elements.has(id));
-    }
-    if(el.groupId){
-      const g = State.groups.get(el.groupId);
-      if(g && g.memberIds) return g.memberIds.filter(id => State.elements.has(id));
-    }
-    return [el.id];
-  }
-  function takeSnapshots(ids, c){
-    snapshots = ids.map(id => {
-      const el = State.elements.get(id);
-      return {
-        id,
-        x: el.x, y: el.y, w: el.w, ar: el.ar, rot: el.rot || 0,
-        px: el.x * c.w, py: el.y * c.h
-      };
-    });
-  }
+  // drag
+  let dOX = 0, dOY = 0;         // offset of the cursor relative to the primary's center (canvas coords)
+  let primaryStartX = 0, primaryStartY = 0; // primary's start position (normalized)
+
+  // resize
+  let rsW = 0, rsAr = 1, rsDist = 1;
+
+  // rotate (multi)
+  let rotCentroidX = 0, rotCentroidY = 0; // in stage/canvas coords (pixels, stage-local)
+  let rotStartAng = 0;
+
+  const involved = new Set();
 
   function clearClass(){ if(node){ try{ node.classList.remove('dragging'); }catch(e){} } }
   function releaseCapture(){
@@ -3260,8 +3272,23 @@ const DragSession = (() => {
   function reset(){
     clearClass(); releaseCapture();
     active = false; pointerId = null; type = null; elId = null; node = null;
+    dragIds = []; snapshots = [];
     dOX = dOY = 0; rsW = rsAr = rsDist = 0;
-    snapshots = []; involved.clear();
+    rotCentroidX = rotCentroidY = 0; rotStartAng = 0;
+    primaryStartX = primaryStartY = 0;
+    involved.clear();
+    document.body.classList.remove('multi-dragging');
+  }
+
+  function takeSnapshots(ids){
+    snapshots = ids.map(id => {
+      const el = State.elements.get(id);
+      if(!el) return null;
+      return {
+        id,
+        x: el.x, y: el.y, w: el.w, ar: el.ar, rot: el.rot || 0
+      };
+    }).filter(Boolean);
   }
 
   function start(_type, _elId, _node, e){
@@ -3276,30 +3303,48 @@ const DragSession = (() => {
     try{ node.setPointerCapture(e.pointerId); }catch(err){}
     if(_type === 'drag') node.classList.add('dragging');
 
+    // Determine which elements should be manipulated
+    const ids = (_type === 'drag')
+      ? Selection.dragGroupFor(_elId)  // multi-select → whole selection; group → whole group; else just this one
+      : [ _elId ];                     // resize/rotate only handle the primary (groups too, via snapshots below)
+
+    // For resize/rotate, if the element is in a group or part of multi-selection, include all
+    if((_type === 'resize' || _type === 'rotate')){
+      const groupIds = Selection.dragGroupFor(_elId);
+      if(groupIds.length > 1){ dragIds = groupIds; }
+      else dragIds = [_elId];
+    } else {
+      dragIds = ids.length ? ids : [_elId];
+    }
+
+    dragIds.forEach(id => involved.add(id));
+    takeSnapshots(dragIds);
+    primaryStartX = el.x;
+    primaryStartY = el.y;
+
     const r = document.getElementById('stage').getBoundingClientRect();
     const cp = Utils.toCanvasPoint(e.clientX, e.clientY, r);
     const c = Utils.getCanvasRect();
     const cx = c.x + el.x * c.w;
     const cy = c.y + el.y * c.h;
 
-    const ids = idsFor(el);
-    ids.forEach(id => involved.add(id));
-    takeSnapshots(ids, c);
-    primaryStart = { x: el.x, y: el.y };
-
     if(_type === 'drag'){
+      // Offset between cursor and primary center, in stage-local pixels.
       dOX = cp.x - cx;
       dOY = cp.y - cy;
+      if(dragIds.length > 1) document.body.classList.add('multi-dragging');
     } else if(_type === 'resize'){
       rsW = el.w; rsAr = el.ar;
       const dx = cp.x - cx, dy = cp.y - cy;
       rsDist = Math.max(8, Math.sqrt(dx*dx + dy*dy));
     } else if(_type === 'rotate'){
       if(snapshots.length > 1){
+        // rotate group around its centroid (in canvas-view pixels)
         let sx = 0, sy = 0;
-        snapshots.forEach(s => { sx += s.px; sy += s.py; });
-        rotCentroid = { x: sx / snapshots.length, y: sy / snapshots.length };
-        rotStartAng = Math.atan2(cp.y - (c.y + rotCentroid.y), cp.x - (c.x + rotCentroid.x));
+        snapshots.forEach(s => { sx += c.x + s.x * c.w; sy += c.y + s.y * c.h; });
+        rotCentroidX = sx / snapshots.length;
+        rotCentroidY = sy / snapshots.length;
+        rotStartAng = Math.atan2(cp.y - rotCentroidY, cp.x - rotCentroidX);
       }
     }
   }
@@ -3332,12 +3377,18 @@ const DragSession = (() => {
     const c = Utils.getCanvasRect();
 
     if(type === 'drag'){
+      // Compute new position of primary center based on cursor & initial offset.
       const newCx = cp.x - dOX;
       const newCy = cp.y - dOY;
-      const nx = Utils.clamp((newCx - c.x) / c.w, -2, 3);
-      const ny = Utils.clamp((newCy - c.y) / c.h, -2, 3);
-      const dx = nx - primaryStart.x;
-      const dy = ny - primaryStart.y;
+      let nx = (newCx - c.x) / c.w;
+      let ny = (newCy - c.y) / c.h;
+      // Clamp primary against a safe range, then compute the actual applied delta
+      nx = Utils.clamp(nx, -2, 3);
+      ny = Utils.clamp(ny, -2, 3);
+      const dx = nx - primaryStartX;
+      const dy = ny - primaryStartY;
+
+      // Apply the SAME delta to every element in the drag group (unified movement)
       snapshots.forEach(s => {
         const oel = State.elements.get(s.id); if(!oel) return;
         oel.x = Utils.clamp(s.x + dx, -2, 3);
@@ -3382,17 +3433,20 @@ const DragSession = (() => {
       try{ if(typeof GroupHud !== 'undefined') GroupHud.refresh(); }catch(err){}
     } else if(type === 'rotate'){
       if(snapshots.length > 1){
-        const ang = Math.atan2(cp.y - (c.y + rotCentroid.y), cp.x - (c.x + rotCentroid.x));
+        const ang = Math.atan2(cp.y - rotCentroidY, cp.x - rotCentroidX);
         const dAng = ang - rotStartAng;
         const cos = Math.cos(dAng), sin = Math.sin(dAng);
         snapshots.forEach(s => {
           const oel = State.elements.get(s.id); if(!oel) return;
-          const rx = s.px - rotCentroid.x;
-          const ry = s.py - rotCentroid.y;
-          const nx = rotCentroid.x + rx * cos - ry * sin;
-          const ny = rotCentroid.y + rx * sin + ry * cos;
-          oel.x = nx / c.w;
-          oel.y = ny / c.h;
+          // Snapshot's pixel position relative to centroid
+          const sPx = c.x + s.x * c.w;
+          const sPy = c.y + s.y * c.h;
+          const rx = sPx - rotCentroidX;
+          const ry = sPy - rotCentroidY;
+          const nx = rotCentroidX + rx * cos - ry * sin;
+          const ny = rotCentroidY + rx * sin + ry * cos;
+          oel.x = (nx - c.x) / c.w;
+          oel.y = (ny - c.y) / c.h;
           oel.rot = s.rot + dAng * 180 / Math.PI;
           const onode = Elements.domNodes.get(s.id);
           if(onode) Elements.positionNode(onode, oel);
@@ -3503,14 +3557,11 @@ const Drawing = (() => {
   let _eraseLast = null;
   function eraseAt(x, y, radius, continuous){
     const c = Utils.getCanvasRect();
-    // radius is in CSS px (like Paint eraser)
     const r = Math.max(6, radius);
-    // Build stamp list: current point + intermediates from last point for continuous stroke
     const stamps = [];
     if(continuous && _eraseLast){
       const dx = x - _eraseLast.x, dy = y - _eraseLast.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      // step in normalized canvas units ~ 30% of brush radius
       const stepN = Math.max(0.002, (r * 0.35) / Math.max(c.w, c.h));
       const steps = Math.min(24, Math.max(1, Math.ceil(dist / stepN)));
       for(let i = 1; i <= steps; i++){
@@ -3611,8 +3662,6 @@ const RemoteCursors = (() => {
   }
   function show(userId, x, y, color, name, opts){
     if(!userId || userId === State.myUserId) return;
-    // Host only sees cursors when the sender has mouse tool active (opts.active)
-    // Guests always see other guests' cursors at 30% opacity; full when active
     const isHost = State.role === 'host';
     const active = !!(opts && opts.active);
     if(isHost && !active){
@@ -3646,7 +3695,6 @@ const RemoteCursors = (() => {
     node.style.opacity = active ? '1' : (isHost ? '0' : '0.3');
     if(active) scheduleAutoHide(userId);
     else {
-      // keep dim cursor visible longer for guests
       const prev = hideTimers.get(userId);
       if(prev) clearTimeout(prev);
       const t = setTimeout(() => { hide(userId); }, 12000);
@@ -3711,7 +3759,6 @@ const Actions = (() => {
     return el;
   }
   function removeElement(id){
-    // multi-select: remove all selected if id is among them
     let ids = [id];
     if(State.selectedElIds && State.selectedElIds.has(id) && State.selectedElIds.size > 1){
       ids = Array.from(State.selectedElIds);
@@ -4044,7 +4091,6 @@ const Programar = (() => {
       clone.userName = State.myName;
       clone.userColor = State.myColor;
       clone.createdAt = Date.now();
-      // Vídeo/áudio da programação sempre autoplay
       if(clone.type === 'video' || clone.type === 'audio'){
         clone.content = Object.assign({}, clone.content, { autoplay: true });
       }
@@ -4053,7 +4099,6 @@ const Programar = (() => {
       Net.send({ type: Net.MSG.EL_CREATE, element: clone });
       spawned.push(clone.id);
     });
-    // Garante autoplay após o DOM montar (gesto do usuário = tecla do programa)
     setTimeout(() => {
       spawned.forEach(id => {
         const el = State.elements.get(id); if(!el) return;
@@ -4267,7 +4312,6 @@ function handleMessageAsHost(msg, from, conn){
     case Net.MSG.CHAT:
       Chat.receive(msg);
       Net.broadcast(msg, from);
-      // also show for host if they ever open chat (hidden UI though)
       break;
     case Net.MSG.GROUP_CREATE:
       if(msg.group) Groups.applyLocalGroup(msg.group);
@@ -4355,7 +4399,7 @@ function handleMessageAsClient(msg, from){
   }
 }
 
-/* ---------- Popup (volume padrão inicial de 15%, sem slider de tamanho de texto) ---------- */
+/* ---------- Popup ---------- */
 const Popup = (() => {
   const popup = document.getElementById('element-popup');
   const titleEl = document.getElementById('ep-title');
@@ -4430,7 +4474,6 @@ const Popup = (() => {
     titleEl.textContent = TYPE_LABEL[el.type] || 'Elemento';
     bodyEl.innerHTML = '';
 
-    // Opacidade
     const opRow = document.createElement('div');
     opRow.className = 'ep-row';
     opRow.innerHTML = '<span>Opacidade</span>';
@@ -4457,7 +4500,6 @@ const Popup = (() => {
     const ctrl = document.createElement('div');
     ctrl.className = 'ep-btns';
 
-    // Play / Pause para video, audio, youtube
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const pb = document.createElement('button');
       pb.className = 'ep-btn ep-btn-play'; pb.type = 'button';
@@ -4491,7 +4533,6 @@ const Popup = (() => {
       }
     }
 
-    // Ocultar do host
     const hb = document.createElement('button');
     hb.className = 'ep-btn ep-btn-hide' + (el.hidden ? ' toggled' : '');
     hb.type = 'button';
@@ -4513,7 +4554,6 @@ const Popup = (() => {
     });
     ctrl.appendChild(hb);
 
-    // Loop
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const lb = document.createElement('button');
       lb.className = 'ep-btn ep-btn-loop' + (el.content.loop ? ' toggled' : '');
@@ -4539,7 +4579,6 @@ const Popup = (() => {
 
     bodyEl.appendChild(ctrl);
 
-    // Posição + Volume
     if(el.type === 'video' || el.type === 'audio' || el.type === 'youtube'){
       const posRow = document.createElement('div');
       posRow.className = 'ep-row';
@@ -4592,7 +4631,6 @@ const Popup = (() => {
       bodyEl.appendChild(volRow);
     }
 
-    // Hotkeys grid
     if(el.type === 'image' || el.type === 'gif' || el.type === 'video' || el.type === 'youtube'){
       const lbl = document.createElement('div');
       lbl.className = 'ep-label'; lbl.textContent = 'Hotkeys 1-0 (trocar / ocultar)';
@@ -4648,7 +4686,6 @@ const Popup = (() => {
       bodyEl.appendChild(grid);
     }
 
-    // Texto (sem slider de tamanho)
     if(el.type === 'text'){
       const lbl = document.createElement('div');
       lbl.className = 'ep-label'; lbl.textContent = 'Texto';
@@ -4717,7 +4754,6 @@ const Popup = (() => {
       });
       bodyEl.appendChild(cw);
 
-      // Contorno
       const oLbl = document.createElement('div');
       oLbl.className = 'ep-label'; oLbl.textContent = 'Contorno';
       bodyEl.appendChild(oLbl);
@@ -5036,7 +5072,12 @@ const UI = (() => {
     if((e.key === 'Delete' || e.key === 'Backspace') &&
        State.role && State.role !== 'host' && Selection.count() > 0){
       e.preventDefault();
-      Actions.removeElement(Selection.getPrimary());
+      // Remove every selected element owned by me; Actions.removeElement handles the multi-case
+      const ids = Selection.getIds().slice();
+      const primary = Selection.getPrimary() || ids[0];
+      // Ensure primary is in selection so removeElement removes all
+      if(!State.selectedElIds.has(primary) && ids.length) State.selectedElIds.add(primary);
+      Actions.removeElement(primary);
       return;
     }
 
@@ -5059,15 +5100,22 @@ const UI = (() => {
     }
 
     if((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'c' || e.key === 'C')){
-      if(State.role && State.role !== 'host' && State.selectedElId){
-        const el = State.elements.get(State.selectedElId);
-        if(el){
+      if(State.role && State.role !== 'host' && Selection.count() > 0){
+        const ids = Selection.getIds();
+        const items = [];
+        ids.forEach(id => {
+          const el = State.elements.get(id);
+          if(!el || el.userId !== State.myUserId) return;
           const clone = JSON.parse(JSON.stringify(el));
           delete clone.id; delete clone.v; delete clone.createdAt;
           delete clone.userId; delete clone.userName; delete clone.userColor;
           delete clone.programKey; delete clone._audioEl; delete clone._lastText;
-          State.clipboard = clone;
-          toastMsg('Copiado');
+          delete clone.groupId; delete clone._groupOx; delete clone._groupOy;
+          items.push(clone);
+        });
+        if(items.length){
+          State.clipboard = items.length === 1 ? items[0] : { _multi: true, items };
+          toastMsg(items.length > 1 ? (items.length + ' itens copiados') : 'Copiado');
         }
       }
       return;
@@ -5280,7 +5328,6 @@ const UI = (() => {
     const parents = ['localhost', '127.0.0.1'];
     const hn = location.hostname;
     if(hn && parents.indexOf(hn) === -1) parents.push(hn);
-    // autoplay + muted required by browsers for auto play
     return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${parents.join('&parent=')}&autoplay=true&muted=true&controls=false`;
   }
   liveBtn.addEventListener('click', () => {
@@ -5293,7 +5340,6 @@ const UI = (() => {
         liveIframe.setAttribute('allowfullscreen', '');
         liveIframe.muted = true;
       }catch(e){}
-      // reset src to force autoplay muted every time
       liveIframe.src = 'about:blank';
       setTimeout(() => {
         liveIframe.src = twitchEmbedUrl('daenil');
@@ -5566,7 +5612,6 @@ const UI = (() => {
       try{ stage.setPointerCapture(e.pointerId); }catch(err){}
     } else if(!e.target.closest('.el') && !e.target.closest('.flyout') && !e.target.closest('#toolbar') && !e.target.closest('#sel-bar')){
       e.preventDefault();
-      // Shift ou modo marquee (duplo-clique) = seleção por arraste; senão inicia possível pan
       if(e.shiftKey){
         Marquee.begin(e.clientX, e.clientY);
       } else {
@@ -5584,7 +5629,6 @@ const UI = (() => {
     if(State.role === 'host') return;
     const r = stage.getBoundingClientRect();
 
-    // Paint-like eraser cursor follows the pointer
     if(State.activeTool === 'eraser' && State.drawing.active){
       const ec = document.getElementById('eraser-cursor');
       if(ec){
@@ -5621,7 +5665,6 @@ const UI = (() => {
       const c2 = Drawing.eraseAt(nx, ny, State.drawing.eraserSize, true);
       if(c2){ Net.send({ type: Net.MSG.ERASE_POINT, x: nx, y: ny, radius: State.drawing.eraserSize }); Drawing.scheduleSync(); }
     }
-    // guests always broadcast cursor (dim for others); active when mouse tool on
     if(State.role !== 'host') thrCursor(nx, ny, State.showMouseActive);
   });
 
@@ -5673,11 +5716,9 @@ const UI = (() => {
     applyView();
   }, { passive: false });
 
-  // Duplo-clique no fundo NÃO inicia seleção — use Shift+arraste
   stage.addEventListener('dblclick', (e) => {
     if(State.role === 'host') return;
     if(e.target.closest('.el')) return;
-    // no-op (seleção múltipla só com Shift+arraste)
   });
 
   document.getElementById('tool-fit').addEventListener('click', resetView);
@@ -5798,7 +5839,6 @@ const Marquee = (() => {
       if(el.ghost) return;
       const w = Math.max(12, el.w * c.w);
       const h = Math.max(10, w * (el.ar || 1));
-      // element AABB in canvas space (center-based layout)
       const ex = c.x + el.x * c.w;
       const ey = c.y + el.y * c.h;
       const left = ex - w/2, right = ex + w/2, top = ey - h/2, bottom = ey + h/2;
@@ -5813,7 +5853,6 @@ const Marquee = (() => {
       if(g && g.memberIds) g.memberIds.forEach(id => { if(State.elements.has(id)) ids.push(id); });
       else State.elements.forEach(el => { if(el.groupId === gid) ids.push(el.id); });
     });
-    // unique
     const uniq = Array.from(new Set(ids));
     if(uniq.length) Selection.selectMany(uniq);
     else Selection.clear();
@@ -5907,8 +5946,6 @@ const GroupHud = (() => {
       const g0 = State.elements.get(ids[0]);
       return e && g0 && e.groupId && e.groupId === g0.groupId;
     });
-    // Canvas-view local coordinates (same space as Elements.positionNode)
-    // so the box zooms/pans with the items
     const c = Utils.getCanvasRect();
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
@@ -5918,7 +5955,6 @@ const GroupHud = (() => {
       const h = Math.max(10, w * (e.ar || 1));
       const cx = c.x + e.x * c.w;
       const cy = c.y + e.y * c.h;
-      // approximate AABB ignoring rotation (good enough for HUD)
       minX = Math.min(minX, cx - w/2);
       maxX = Math.max(maxX, cx + w/2);
       minY = Math.min(minY, cy - h/2);
