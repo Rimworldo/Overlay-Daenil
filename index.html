@@ -111,9 +111,35 @@ button{font-family:inherit;}
 .gate-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:0.9;}
 .gate-brand span{font-size:12px;font-weight:600;letter-spacing:1.6px;color:var(--text-dim);}
 .gate-room-label{font-size:11.5px;color:var(--text-dim);margin-bottom:5px;}
-.gate-room-id{font-size:30px;font-weight:700;letter-spacing:3px;color:var(--text);margin-bottom:14px;display:flex;align-items:baseline;gap:10px;}
+.gate-room-id{font-size:30px;font-weight:700;letter-spacing:3px;color:var(--text);margin-bottom:10px;display:flex;align-items:baseline;gap:10px;}
 .gate-room-id small{font-size:10.5px;font-weight:500;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:10px;letter-spacing:.3px;cursor:pointer;}
 .gate-room-id small:hover{background:var(--accent-soft-2);}
+
+/* Discord toggle */
+.gate-discord-toggle{
+  display:flex;align-items:center;gap:8px;
+  font-size:11.5px;color:var(--text-dim);
+  cursor:pointer;user-select:none;
+  padding:7px 9px;margin-bottom:14px;
+  border:1px solid var(--line);border-radius:6px;
+  background:rgba(255,255,255,0.015);
+  transition:border-color .12s ease, color .12s ease;
+}
+.gate-discord-toggle:hover{border-color:var(--line-2);color:var(--text);}
+.gate-discord-toggle input[type="checkbox"]{
+  width:14px;height:14px;margin:0;cursor:pointer;
+  accent-color:var(--accent);flex:none;
+}
+.gate-discord-toggle .gdt-tag{
+  margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.5px;
+  padding:2px 6px;border-radius:4px;
+  background:rgba(88,101,242,0.15);color:#8891f0;
+  border:1px solid rgba(88,101,242,0.3);
+}
+.gate-discord-toggle input:checked ~ .gdt-tag{
+  background:rgba(88,101,242,0.28);color:#a9b0f5;border-color:rgba(88,101,242,0.55);
+}
+
 .gate-btn{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--line-2);background:var(--panel-2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
 .gate-btn:hover{background:var(--panel-3);}
 .gate-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -751,6 +777,14 @@ body.host-mode #group-menu { display: none !important; }
            style="text-align:left;letter-spacing:0;font-size:13.5px;margin-bottom:6px;">
     <div class="gate-room-label">Sala</div>
     <div class="gate-room-id"><span id="my-room-code">------</span><small id="copy-room-btn">copiar</small></div>
+
+    <!-- Discord toggle -->
+    <label class="gate-discord-toggle" title="Envia automaticamente o código da sala para o Discord quando você iniciar como Host">
+      <input type="checkbox" id="discord-post-toggle">
+      <span>Postar código ao iniciar host</span>
+      <span class="gdt-tag">DISCORD</span>
+    </label>
+
     <button class="gate-btn primary" id="btn-create-room">Criar sala (Host)</button>
     <div class="gate-divider">ou</div>
     <button class="gate-btn" id="btn-show-join">Entrar em uma sala</button>
@@ -1169,10 +1203,10 @@ body.host-mode #group-menu { display: none !important; }
 
 <script>
 /* ==========================================================================
-   STREAMCANVAS — v3.4
+   STREAMCANVAS — v3.5
+   - Integração com webhook do Discord: avisa o código da sala ao iniciar host
    - Sistema de seleção múltipla reescrito: arraste move tudo como entidade única
    - Sistema de animação: Mover/Orbitar preserva offsets relativos no multi-select
-   - Correções leves e melhorias de UX
    ========================================================================== */
 
 const ICONS = {
@@ -1324,6 +1358,59 @@ const Utils = (() => {
   return { uid, randomRoomCode, clamp, throttle, escapeAttr, extractYouTubeInfo,
            isSafeMediaDataUrl, fileToDataURL, downscaleImage, colorForUser, fmtTime, tryPlay,
            toCanvasPoint, getStageSize, getCanvasRect, loadImageSize, measureTextBox };
+})();
+
+/* ---------- Discord Notifier (webhook) ---------- */
+const DiscordNotifier = (() => {
+  const WEBHOOK_URL = 'https://discord.com/api/webhooks/1560313830922518589/dZymhhg1XVCXbz4-A1al5njGqmOp6Voejos0ulJyG2Hee_IGRP0SXkMvnnpwOeTtrgbl';
+  const STORAGE_KEY = 'streamcanvas_discord_post_enabled';
+
+  function isEnabled(){
+    try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch(e){ return false; }
+  }
+  function setEnabled(v){
+    try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch(e){}
+  }
+  async function postRoomCode(code){
+    if(!code) return false;
+    const payload = {
+      content: `O código de hoje é **${code}**`,
+      username: 'StreamCanvas',
+      allowed_mentions: { parse: [] }
+    };
+    try{
+      const res = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        console.warn('Discord webhook respondeu com status', res.status);
+        return false;
+      }
+      return true;
+    }catch(e){
+      console.warn('Falha ao enviar para o Discord:', e);
+      return false;
+    }
+  }
+  function init(){
+    const cb = document.getElementById('discord-post-toggle');
+    if(!cb) return;
+    cb.checked = isEnabled();
+    cb.addEventListener('change', () => {
+      setEnabled(cb.checked);
+      if(State.role === 'host'){
+        // já está em sala: permite testar imediatamente
+        if(cb.checked){
+          UI.toast('Aviso do Discord ligado — será enviado no próximo host');
+        } else {
+          UI.toast('Aviso do Discord desligado');
+        }
+      }
+    });
+  }
+  return { init, isEnabled, setEnabled, postRoomCode };
 })();
 
 /* ---------- State ---------- */
@@ -4993,8 +5080,7 @@ const UI = (() => {
   }
 
   function resetToGate(){
-    try{ localStorage.clear(); }catch(e){}
-    try{ sessionStorage.clear(); }catch(e){}
+    try{ localStorage.removeItem('streamcanvas_discord_post_enabled_snapshot'); }catch(e){}
     try{ if(State.peer) State.peer.destroy(); }catch(e){}
     try{ DragSession.cancel(); }catch(e){}
     MediaTick.stop();
@@ -5038,6 +5124,9 @@ const UI = (() => {
     app.classList.remove('active');
     toolbar.classList.add('hidden');
     liveBtn.classList.add('hidden');
+    // Preservar preferência do Discord
+    const dcb = document.getElementById('discord-post-toggle');
+    if(dcb) dcb.checked = DiscordNotifier.isEnabled();
   }
 
   function scheduleViewportSend(){
@@ -5168,6 +5257,15 @@ const UI = (() => {
         activateHostUI();
         const s = Utils.getStageSize();
         State.hostAR = s.w / s.h;
+
+        // Discord: enviar código ao iniciar host
+        if(DiscordNotifier.isEnabled()){
+          DiscordNotifier.postRoomCode(roomCode).then(ok => {
+            // Não há toast no host-mode, então apenas log
+            console.log(ok ? 'Código enviado ao Discord' : 'Falha ao enviar para o Discord');
+          });
+        }
+
         return true;
       }catch(err){
         if(err && err.message === 'room-taken'){
@@ -5977,6 +6075,7 @@ const GroupHud = (() => {
 try{ Chat.bind(); }catch(e){ console.warn('Chat bind', e); }
 try{ Anims.bind(); }catch(e){ console.warn('Anims bind', e); }
 try{ SelBar.bind(); }catch(e){ console.warn('SelBar bind', e); }
+try{ DiscordNotifier.init(); }catch(e){ console.warn('Discord init', e); }
 
 
 /* ---------- Boot ---------- */
