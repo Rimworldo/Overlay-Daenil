@@ -776,7 +776,7 @@ body.host-mode #group-menu { display: none !important; }
     <input class="gate-input" id="host-name-input" maxlength="24" placeholder="Host" value="Host"
            style="text-align:left;letter-spacing:0;font-size:13.5px;margin-bottom:6px;">
     <div class="gate-room-label">Sala</div>
-    <div class="gate-room-id"><span id="my-room-code">------</span><small id="copy-room-btn">copiar</small></div>
+    <div class="gate-room-id"><span id="my-room-code">------</span><small id="copy-room-btn">copiar link</small></div>
 
     <!-- Discord toggle -->
     <label class="gate-discord-toggle" title="Envia automaticamente o código da sala para o Discord quando você iniciar como Host">
@@ -1371,11 +1371,15 @@ const DiscordNotifier = (() => {
   function setEnabled(v){
     try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0'); } catch(e){}
   }
+  function buildJoinUrl(code){
+    return location.origin + location.pathname + '?sala=' + encodeURIComponent(code);
+  }
   async function postRoomCode(code){
     if(!code) return false;
     const payload = {
-      content: `O código de hoje é **${code}**`,
-      username: 'StreamCanvas',
+      content: `O código de hoje é **${code}**\nLink Direto; ${buildJoinUrl(code)}`,
+      username: 'Overlay',
+      avatar_url: 'https://user.uploads.dev/file/0fcdc05e69fbd72009cfa3bfba42527b.png',
       allowed_mentions: { parse: [] }
     };
     try{
@@ -1410,7 +1414,7 @@ const DiscordNotifier = (() => {
       }
     });
   }
-  return { init, isEnabled, setEnabled, postRoomCode };
+  return { init, isEnabled, setEnabled, postRoomCode, buildJoinUrl };
 })();
 
 /* ---------- State ---------- */
@@ -5298,8 +5302,8 @@ const UI = (() => {
     await becomeHostWithRetry(generatedRoomCode);
   });
   document.getElementById('copy-room-btn').addEventListener('click', () => {
-    try{ navigator.clipboard && navigator.clipboard.writeText(generatedRoomCode); }catch(e){}
-    toastMsg('Código copiado');
+    try{ navigator.clipboard && navigator.clipboard.writeText(DiscordNotifier.buildJoinUrl(generatedRoomCode)); }catch(e){}
+    toastMsg('Link copiado');
   });
   document.getElementById('btn-show-join').addEventListener('click', () => {
     document.getElementById('join-block').classList.remove('hidden');
@@ -5419,6 +5423,16 @@ const UI = (() => {
       gateStatus.textContent = 'Sala não encontrada.';
     }
   }
+
+  // Link direto: ?sala=123456 preenche o código e conecta sozinho
+  (function autoJoinFromUrl(){
+    let code = '';
+    try{ code = (new URLSearchParams(location.search).get('sala') || '').trim(); }catch(e){}
+    if(!/^\d{4,8}$/.test(code)) return;
+    document.getElementById('join-block').classList.remove('hidden');
+    document.getElementById('join-code-input').value = code;
+    setTimeout(doJoin, 0); // depois do script terminar de carregar
+  })();
 
   connIndicator.addEventListener('click', () => connIndicator.classList.toggle('hide'));
 
