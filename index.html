@@ -46,6 +46,10 @@ body.host-mode #element-popup,
 body.host-mode .flyout,
 body.host-mode #toast,
 body.host-mode #live-btn,
+body.host-mode #live-lock-btn,
+body.host-mode #twitch-chat-btn,
+body.host-mode #twitch-chat-panel,
+body.host-mode #chat-toast,
 body.host-mode #peer-badge,
 body.host-mode #program-banner,
 body.host-mode #programar-modal,
@@ -159,7 +163,16 @@ button{font-family:inherit;}
 /* ================= APP ROOT ================= */
 #app{position:fixed;inset:0;display:none;}
 #app.active{display:block;}
-#app-bg{position:absolute;inset:0;}
+#app-bg{position:absolute;inset:0;background:#0a0b0d;}
+body:not(.host-mode) #app-bg{background:#0a0b0d;}
+#stage{background:transparent;}
+body:not(.host-mode) #canvas-view{
+  background:rgba(0,0,0,0.35);
+}
+body:not(.host-mode) #stage-bounds{
+  background:transparent;
+  box-shadow:0 0 0 9999px #12151a;
+}
 #media-upload{
   position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:880;
   display:none;width:min(360px,calc(100vw - 32px));padding:10px 12px;
@@ -216,9 +229,73 @@ body.host-mode #canvas-view{transform:none !important;}
   background:#000;
   overflow:hidden;
   border-radius:2px;
+  z-index:1;
+  pointer-events:none;
 }
 #live-embed.active{display:block;}
-#live-embed iframe{width:100%;height:100%;border:0;display:block;}
+#live-embed.unlocked{pointer-events:auto;}
+#live-embed iframe{width:100%;height:100%;border:0;display:block;pointer-events:inherit;}
+#elements-layer{z-index:10;}
+#draw-canvas{z-index:5;}
+#stage-bounds{z-index:40;}
+#group-hud{z-index:36;}
+#live-lock-btn{
+  position:fixed;top:10px;left:150px;z-index:700;
+  display:none;align-items:center;gap:6px;
+  padding:7px 12px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--line-2);
+  color:var(--text);font-size:11.5px;font-weight:600;
+  cursor:pointer;
+}
+#live-lock-btn.show{display:flex;}
+#live-lock-btn:hover{background:var(--panel-3);}
+#live-lock-btn.unlocked{background:rgba(74,157,116,0.16);border-color:rgba(74,157,116,0.45);color:#7bc49a;}
+#live-lock-btn svg{width:13px;height:13px;}
+#twitch-chat-btn{
+  position:fixed;top:10px;left:150px;z-index:700;
+  display:none;align-items:center;gap:6px;
+  padding:7px 12px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--line-2);
+  color:var(--text);font-size:11.5px;font-weight:600;
+  cursor:pointer;
+}
+#twitch-chat-btn.show{display:flex;}
+#twitch-chat-btn:hover{background:var(--panel-3);}
+#twitch-chat-btn.active{background:rgba(145,70,255,0.18);border-color:rgba(145,70,255,0.5);color:#c9a0ff;}
+#twitch-chat-btn svg{width:13px;height:13px;}
+#twitch-chat-panel{
+  position:fixed;top:48px;right:12px;bottom:14px;width:340px;max-width:calc(100vw - 24px);
+  z-index:710;display:none;flex-direction:column;
+  background:#0e0e10;border:1px solid var(--line-2);border-radius:10px;
+  overflow:hidden;box-shadow:0 18px 44px -15px rgba(0,0,0,0.75);
+}
+#twitch-chat-panel.open{display:flex;}
+#twitch-chat-panel header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--text);
+}
+#twitch-chat-panel header button{
+  background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;
+}
+#twitch-chat-panel header button:hover{color:var(--text);}
+#twitch-chat-panel iframe{flex:1;width:100%;border:0;background:#0e0e10;}
+#chat-toast{
+  position:fixed;right:16px;bottom:16px;z-index:9200;
+  min-width:220px;max-width:340px;
+  background:var(--panel);border:1px solid var(--line-2);
+  border-radius:10px;padding:12px 14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);
+  opacity:0;transform:translateY(12px);pointer-events:none;
+  transition:opacity .22s ease, transform .22s ease;
+}
+#chat-toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+#chat-toast .ct-name{font-size:12px;font-weight:700;margin-bottom:4px;}
+#chat-toast .ct-body{font-size:12.5px;color:var(--text);word-break:break-word;line-height:1.4;}
+body.host-mode #live-lock-btn,
+body.host-mode #twitch-chat-btn,
+body.host-mode #twitch-chat-panel,
+body.host-mode #chat-toast{display:none !important;}
 
 #stage-bounds{
   position:absolute;
@@ -925,6 +1002,33 @@ body.host-mode #group-menu { display: none !important; }
     <span id="live-btn-label">Mostrar live</span>
   </button>
 
+  <button id="live-lock-btn" title="Bloquear/desbloquear interação com a live">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2"/>
+      <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+    </svg>
+    <span id="live-lock-label">Live bloqueada</span>
+  </button>
+
+  <button id="twitch-chat-btn" class="hidden" title="Mostrar chat da live Daenil">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H7l-4 3V11.5A8.5 8.5 0 1 1 21 11.5z"/>
+    </svg>
+    <span id="twitch-chat-btn-label">Mostrar Chat</span>
+  </button>
+
+  <div id="twitch-chat-panel">
+    <header>
+      <span>Chat Twitch — Daenil</span>
+      <button type="button" id="twitch-chat-close" title="Fechar">×</button>
+    </header>
+    <iframe id="twitch-chat-iframe" src="about:blank" allow="autoplay; encrypted-media"></iframe>
+  </div>
+  <div id="chat-toast">
+    <div class="ct-name" id="chat-toast-name"></div>
+    <div class="ct-body" id="chat-toast-body"></div>
+  </div>
+
   <div id="program-banner" class="hidden">
     Editando programa <b id="prog-key">1</b>
     <button id="prog-exit">Sair</button>
@@ -944,8 +1048,8 @@ body.host-mode #group-menu { display: none !important; }
 
   <div id="stage">
     <div id="canvas-view">
-      <canvas id="draw-canvas"></canvas>
       <div id="live-embed"><iframe allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe></div>
+      <canvas id="draw-canvas"></canvas>
       <div id="elements-layer"></div>
       <div id="stage-bounds"></div>
       <div id="group-hud"><span class="gh-label">GRUPO</span></div>
@@ -1229,7 +1333,7 @@ const ICONS = {
 
 const DEFAULT_CANVAS_AR = 16 / 9;
 const TEXT_FONTS = ['Segoe UI', 'Arial', 'Helvetica', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New', 'Trebuchet MS', 'Impact'];
-const DEFAULT_VOLUME = 0.15;
+const DEFAULT_VOLUME = 0.01;
 const TEXT_BASE_FONT_SIZE = 28;
 const TEXT_BASE_W = 0.26;
 const TEXT_DESIGN_W = 1920;
@@ -1839,49 +1943,51 @@ const Anims = (() => {
   function buildAnimForElement(el, type){
     if(!draft || !draft.type) return null;
     const primary = primaryEl();
+    const base = saved.has(el.id) ? saved.get(el.id) : null;
+    const baseX = base ? base.x : el.x;
+    const baseY = base ? base.y : el.y;
+    const baseRot = base ? base.rot : (el.rot || 0);
     if(type === 'move'){
-      const pFromX = draft.fromX != null ? draft.fromX : el.x;
-      const pFromY = draft.fromY != null ? draft.fromY : el.y;
+      const pFromX = draft.fromX != null ? draft.fromX : baseX;
+      const pFromY = draft.fromY != null ? draft.fromY : baseY;
       const pToX = draft.toX != null ? draft.toX : pFromX + 0.15;
       const pToY = draft.toY != null ? draft.toY : pFromY;
-      // delta relative to primary element's start position (draft was created from primary)
-      const refX = primary ? primary.x : el.x;
-      const refY = primary ? primary.y : el.y;
       const dx = pToX - pFromX;
       const dy = pToY - pFromY;
-      // fromX/Y anchored to each element's own position at time of applying
-      const fromX = el.x;
-      const fromY = el.y;
+      const fromX = baseX;
+      const fromY = baseY;
       const toX = fromX + dx;
       const toY = fromY + dy;
       return {
         type: 'move',
         fromX, fromY, toX, toY,
-        duration: draft.duration || 2,
+        duration: Math.max(0.12, draft.duration || 2),
         mode: draft.mode || 'pingpong',
         ease: draft.ease || 'smooth',
         _t0: performance.now()
       };
     }
     if(type === 'orbit'){
-      const primaryRef = primary || el;
-      const relX = el.x - primaryRef.x;
-      const relY = el.y - primaryRef.y;
-      const cx = (draft.cx != null ? draft.cx : primaryRef.x) + relX;
-      const cy = (draft.cy != null ? draft.cy : primaryRef.y) + relY;
+      const primaryRefX = primary ? (saved.has(primary.id) ? saved.get(primary.id).x : primary.x) : baseX;
+      const primaryRefY = primary ? (saved.has(primary.id) ? saved.get(primary.id).y : primary.y) : baseY;
+      const relX = baseX - primaryRefX;
+      const relY = baseY - primaryRefY;
+      const cx = (draft.cx != null ? draft.cx : primaryRefX) + relX;
+      const cy = (draft.cy != null ? draft.cy : primaryRefY) + relY;
+      const ang0 = Math.atan2(baseY - cy, baseX - cx);
       return {
         type: 'orbit',
         cx, cy,
         radius: draft.radius || 0.12,
         speed: draft.speed || 60,
         dir: draft.dir || 1,
-        baseAng: draft.baseAng || 0,
+        baseAng: ang0,
         _t0: performance.now()
       };
     }
     if(type === 'spin'){
       return Object.assign({}, draft, {
-        baseRot: el.rot || 0,
+        baseRot: baseRot,
         _t0: performance.now()
       });
     }
@@ -1980,6 +2086,15 @@ const Anims = (() => {
     readCfg();
     const ids = currentIds();
     if(!ids.length){ UI.toast('Selecione um item seu'); return; }
+    ids.forEach(id => {
+      const el = State.elements.get(id); if(!el) return;
+      if(saved.has(id)){
+        const s0 = saved.get(id);
+        el.x = s0.x; el.y = s0.y; el.rot = s0.rot;
+        const node = Elements.domNodes.get(id);
+        if(node) Elements.positionNode(node, el);
+      }
+    });
     ids.forEach(id => {
       const el = State.elements.get(id);
       if(!el) return;
@@ -2126,10 +2241,37 @@ const Chat = (() => {
     Net.send(msg);
     if(State.role !== 'host') append(State.myName, State.myColor, v, true);
   }
+  const NOTIFY_SOUND = 'https://user.uploads.dev/file/7ae5c5860c0b192daf7148916903e28f.mp3';
+  let audioEl = null;
+  let toastTimer = null;
+  function playNotify(){
+    try{
+      if(!audioEl){ audioEl = new Audio(NOTIFY_SOUND); audioEl.volume = 0.55; }
+      audioEl.currentTime = 0;
+      const p = audioEl.play();
+      if(p && p.catch) p.catch(() => {});
+    }catch(e){}
+  }
+  function showToast(name, color, text){
+    const box = document.getElementById('chat-toast');
+    const n = document.getElementById('chat-toast-name');
+    const b = document.getElementById('chat-toast-body');
+    if(!box || !n || !b) return;
+    n.textContent = name || 'Convidado';
+    n.style.color = color || '#5285c2';
+    b.textContent = text || '';
+    box.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => box.classList.remove('show'), 4200);
+  }
   function receive(msg){
     if(!msg || !msg.text) return;
-    if(msg.userId === State.myUserId && State.role === 'host') return;
+    if(msg.userId === State.myUserId) return;
     append(msg.name, msg.color, msg.text, false);
+    if(State.role !== 'host'){
+      playNotify();
+      showToast(msg.name, msg.color, msg.text);
+    }
     if(!State.chatOpen){
       State.chatUnread++;
       const btn = document.getElementById('tool-chat');
@@ -2181,13 +2323,48 @@ const Net = (() => {
   }
   function peerIdForRoom(c){ return 'streamcanvas-' + c; }
 
+  const PEER_OPTS = {
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  };
+  let heartbeatTimer = null;
+  let clientReconnectTimer = null;
+  let clientRoomMeta = null;
+  let clientRoomCode = null;
+
+  function startHeartbeat(){
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      try{
+        if(State.role === 'host'){
+          broadcastAll({ type: 'ping', t: Date.now() });
+        } else if(State.hostConn && State.hostConn.open){
+          State.hostConn.send({ type: 'ping', t: Date.now() });
+        }
+      }catch(e){}
+    }, 8000);
+  }
+  function stopHeartbeat(){
+    if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  }
+
   function createHostPeer(roomCode){
     return new Promise((res, rej) => {
       onConnectionState('connecting', 'Criando sala...');
       let peer = null;
-      try{ peer = new Peer(peerIdForRoom(roomCode), {debug: 0}); }catch(e){ rej(e); return; }
+      try{ peer = new Peer(peerIdForRoom(roomCode), PEER_OPTS); }catch(e){ rej(e); return; }
       let settled = false;
-      peer.on('open', () => { settled = true; State.peer = peer; onConnectionState('ok', 'Sala ativa'); res(peer); });
+      peer.on('open', () => {
+        settled = true; State.peer = peer; onConnectionState('ok', 'Sala ativa');
+        startHeartbeat();
+        res(peer);
+      });
       peer.on('connection', (c) => setupHostSideConnection(c));
       peer.on('error', (err) => {
         if(!settled){
@@ -2195,9 +2372,15 @@ const Net = (() => {
           try{ peer.destroy(); }catch(e){}
           if(err && err.type === 'unavailable-id') rej(new Error('room-taken'));
           else rej(err);
+        } else {
+          onConnectionState('warn', 'Erro de rede — reconectando...');
+          try{ peer.reconnect(); }catch(e){}
         }
       });
-      peer.on('disconnected', () => { onConnectionState('warn', 'Reconectando...'); try{ peer.reconnect(); }catch(e){} });
+      peer.on('disconnected', () => {
+        onConnectionState('warn', 'Reconectando...');
+        try{ peer.reconnect(); }catch(e){}
+      });
     });
   }
 
@@ -2205,38 +2388,115 @@ const Net = (() => {
     conn.on('open', () => {
       const id = (conn.metadata && conn.metadata.userId) ? conn.metadata.userId : Utils.uid('user');
       conn._userId = id;
+      const prev = State.clientConns.get(id);
+      if(prev && prev !== conn){ try{ prev.close(); }catch(e){} }
       State.clientConns.set(id, conn);
       onClientJoined(id, conn.metadata);
     });
-    conn.on('data', (d) => onMessage(d, conn._userId, conn));
+    conn.on('data', (d) => {
+      if(d && d.type === 'ping') return;
+      onMessage(d, conn._userId, conn);
+    });
     conn.on('close', () => {
-      if(conn._userId){
+      if(conn._userId && State.clientConns.get(conn._userId) === conn){
         State.clientConns.delete(conn._userId);
         onClientLeft(conn._userId);
         broadcast({ type: MSG.PEER_LEFT, userId: conn._userId });
       }
     });
+    conn.on('error', () => {});
   }
 
   function createClientPeer(){
     return new Promise((res, rej) => {
-      const p = new Peer({debug: 0});
-      p.on('open', () => { State.peer = p; res(p); });
-      p.on('error', (e) => rej(e));
+      const p = new Peer(PEER_OPTS);
+      let settled = false;
+      p.on('open', () => { settled = true; State.peer = p; res(p); });
+      p.on('error', (e) => { if(!settled){ settled = true; rej(e); } });
+      p.on('disconnected', () => {
+        onConnectionState('warn', 'Reconectando...');
+        try{ p.reconnect(); }catch(e){}
+      });
     });
+  }
+
+  function scheduleClientReconnect(){
+    if(clientReconnectTimer) return;
+    if(State.role !== 'client' || !clientRoomCode) return;
+    onConnectionState('warn', 'Reconectando...');
+    clientReconnectTimer = setTimeout(async () => {
+      clientReconnectTimer = null;
+      if(State.role !== 'client' || !clientRoomCode) return;
+      try{
+        if(State.hostConn){ try{ State.hostConn.close(); }catch(e){} State.hostConn = null; }
+        if(State.peer){
+          try{
+            if(State.peer.destroyed){ State.peer = null; }
+            else if(State.peer.disconnected){ try{ State.peer.reconnect(); }catch(e){ State.peer = null; } }
+          }catch(e){ State.peer = null; }
+        }
+        if(!State.peer || State.peer.destroyed){
+          try{ if(State.peer) State.peer.destroy(); }catch(e){}
+          State.peer = null;
+          await createClientPeer();
+        }
+        const meta = clientRoomMeta || { userId: State.myUserId, name: State.myName, color: State.myColor };
+        const target = peerIdForRoom(clientRoomCode);
+        const conn = State.peer.connect(target, { reliable: true, metadata: meta });
+        let settled = false;
+        const tm = setTimeout(() => {
+          if(!settled){ settled = true; scheduleClientReconnect(); }
+        }, 10000);
+        conn.on('open', () => {
+          clearTimeout(tm); settled = true;
+          State.hostConn = conn;
+          onConnectionState('ok', 'Reconectado');
+          try{
+            conn.send({ type: MSG.HELLO, userId: State.myUserId, name: State.myName, color: State.myColor });
+          }catch(e){}
+          startHeartbeat();
+        });
+        conn.on('data', (d) => {
+          if(d && d.type === 'ping') return;
+          onMessage(d, 'host', conn);
+        });
+        conn.on('close', () => {
+          onConnectionState('err', 'Conexão perdida');
+          scheduleClientReconnect();
+        });
+        conn.on('error', () => {
+          if(!settled){ settled = true; clearTimeout(tm); scheduleClientReconnect(); }
+        });
+      }catch(e){
+        scheduleClientReconnect();
+      }
+    }, 1800);
   }
 
   function connectToHost(roomCode, meta){
     return new Promise(async (res, rej) => {
       onConnectionState('connecting', 'Conectando...');
+      clientRoomCode = roomCode;
+      clientRoomMeta = meta;
       try{ if(!State.peer) await createClientPeer(); }catch(e){ rej(e); return; }
       const target = peerIdForRoom(roomCode);
       const conn = State.peer.connect(target, { reliable: true, metadata: meta });
       let settled = false;
-      const tm = setTimeout(() => { if(!settled){ settled = true; rej(new Error('room-not-found')); } }, 9000);
-      conn.on('open', () => { clearTimeout(tm); settled = true; State.hostConn = conn; onConnectionState('ok', 'Conectado'); res(conn); });
-      conn.on('data', (d) => onMessage(d, 'host', conn));
-      conn.on('close', () => onConnectionState('err', 'Conexão perdida'));
+      const tm = setTimeout(() => { if(!settled){ settled = true; rej(new Error('room-not-found')); } }, 12000);
+      conn.on('open', () => {
+        clearTimeout(tm); settled = true; State.hostConn = conn;
+        onConnectionState('ok', 'Conectado');
+        startHeartbeat();
+        res(conn);
+      });
+      conn.on('data', (d) => {
+        if(d && d.type === 'ping') return;
+        onMessage(d, 'host', conn);
+      });
+      conn.on('close', () => {
+        onConnectionState('err', 'Conexão perdida');
+        if(State.role === 'client') scheduleClientReconnect();
+      });
       conn.on('error', (e) => { clearTimeout(tm); if(!settled){ settled = true; rej(e); } });
     });
   }
@@ -5187,7 +5447,15 @@ const UI = (() => {
     toolbar.classList.remove('hidden');
     connIndicator.style.display = '';
     liveBtn.classList.remove('hidden');
-    setTimeout(() => connIndicator.classList.add('faded'), 4000);
+    const tcb = document.getElementById('twitch-chat-btn');
+    if(tcb){
+      tcb.classList.remove('hidden');
+      tcb.classList.add('show');
+    }
+    setTimeout(() => {
+      connIndicator.classList.add('faded');
+      try{ layoutTopButtons(); }catch(e){}
+    }, 80);
   }
 
   function enterPlacement(type, content, opts){
@@ -5255,10 +5523,25 @@ const UI = (() => {
     tutorialModal.classList.add('hidden');
     nameModal.classList.add('hidden');
     State.liveVisible = false;
+    State.liveUnlocked = false;
+    State.twitchChatVisible = false;
     liveEmbed.classList.remove('active');
+    liveEmbed.classList.remove('unlocked');
     liveBtn.classList.remove('active');
     liveBtnLabel.textContent = 'Mostrar live';
     try{ liveIframe.src = 'about:blank'; }catch(e){}
+    try{
+      const lock = document.getElementById('live-lock-btn');
+      if(lock){ lock.classList.remove('show'); lock.classList.remove('unlocked'); }
+      const tcb = document.getElementById('twitch-chat-btn');
+      if(tcb){ tcb.classList.add('hidden'); tcb.classList.remove('active'); tcb.classList.remove('show'); }
+      const tcp = document.getElementById('twitch-chat-panel');
+      if(tcp) tcp.classList.remove('open');
+      const tci = document.getElementById('twitch-chat-iframe');
+      if(tci) tci.src = 'about:blank';
+      const ct = document.getElementById('chat-toast');
+      if(ct) ct.classList.remove('show');
+    }catch(e){}
     generatedRoomCode = Utils.randomRoomCode();
     myRoomCodeEl.textContent = generatedRoomCode;
     gateStatus.className = 'gate-status'; gateStatus.textContent = '';
@@ -5575,21 +5858,67 @@ const UI = (() => {
 
   connIndicator.addEventListener('click', () => connIndicator.classList.toggle('hide'));
 
-  function twitchEmbedUrl(channel){
+  function twitchParents(){
     const parents = ['localhost', '127.0.0.1'];
     const hn = location.hostname;
     if(hn && parents.indexOf(hn) === -1) parents.push(hn);
-    return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${parents.join('&parent=')}&autoplay=true&muted=true&controls=false`;
+    return parents;
   }
+  function twitchEmbedUrl(channel){
+    const parents = twitchParents();
+    // Audio ON (muted=false). Interaction controlled by CSS pointer-events + lock button.
+    return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${parents.join('&parent=')}&autoplay=true&muted=false&controls=true`;
+  }
+  function twitchChatUrl(channel){
+    const parents = twitchParents();
+    return `https://www.twitch.tv/embed/${encodeURIComponent(channel)}/chat?parent=${parents.join('&parent=')}&darkpopout`;
+  }
+
+  State.liveUnlocked = false;
+  State.twitchChatVisible = false;
+
+  function layoutTopButtons(){
+    const lb = document.getElementById('live-btn');
+    const lock = document.getElementById('live-lock-btn');
+    const chatB = document.getElementById('twitch-chat-btn');
+    if(!lb) return;
+    let x = 12;
+    if(!lb.classList.contains('hidden')){
+      lb.style.left = x + 'px';
+      x += (lb.offsetWidth || 120) + 8;
+    }
+    if(lock && lock.classList.contains('show')){
+      lock.style.left = x + 'px';
+      x += (lock.offsetWidth || 130) + 8;
+    }
+    if(chatB && !chatB.classList.contains('hidden')){
+      chatB.style.left = x + 'px';
+    }
+  }
+
+  function setLiveLocked(locked){
+    State.liveUnlocked = !locked;
+    const lock = document.getElementById('live-lock-btn');
+    const label = document.getElementById('live-lock-label');
+    if(liveEmbed){
+      liveEmbed.classList.toggle('unlocked', !locked);
+    }
+    if(lock){
+      lock.classList.toggle('unlocked', !locked);
+      if(label) label.textContent = locked ? 'Live bloqueada' : 'Live liberada';
+    }
+  }
+
   liveBtn.addEventListener('click', () => {
     if(State.role === 'host') return;
     State.liveVisible = !State.liveVisible;
+    const lock = document.getElementById('live-lock-btn');
+    const chatB = document.getElementById('twitch-chat-btn');
     if(State.liveVisible){
       updateLiveEmbedRect();
       try{
         liveIframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture');
         liveIframe.setAttribute('allowfullscreen', '');
-        liveIframe.muted = true;
       }catch(e){}
       liveIframe.src = 'about:blank';
       setTimeout(() => {
@@ -5598,14 +5927,63 @@ const UI = (() => {
       }, 30);
       liveBtn.classList.add('active');
       liveBtnLabel.textContent = 'Esconder live';
-      try{ UI.toast('Live em mudo'); }catch(e){}
+      setLiveLocked(true); // starts locked: no interaction, audio plays
+      if(lock) lock.classList.add('show');
+      if(chatB){ chatB.classList.remove('hidden'); chatB.classList.add('show'); }
+      try{ UI.toast('Live com áudio — use o cadeado para interagir'); }catch(e){}
+      setTimeout(layoutTopButtons, 30);
     } else {
       liveEmbed.classList.remove('active');
+      liveEmbed.classList.remove('unlocked');
       liveBtn.classList.remove('active');
       liveBtnLabel.textContent = 'Mostrar live';
       try{ liveIframe.src = 'about:blank'; }catch(e){}
+      if(lock) lock.classList.remove('show');
+      setLiveLocked(true);
+      setTimeout(layoutTopButtons, 30);
     }
   });
+
+  const liveLockBtn = document.getElementById('live-lock-btn');
+  if(liveLockBtn){
+    liveLockBtn.addEventListener('click', () => {
+      if(State.role === 'host' || !State.liveVisible) return;
+      setLiveLocked(!!State.liveUnlocked); // toggle
+      try{ UI.toast(State.liveUnlocked ? 'Live liberada para interação' : 'Live bloqueada'); }catch(e){}
+    });
+  }
+
+  const twitchChatBtn = document.getElementById('twitch-chat-btn');
+  const twitchChatPanel = document.getElementById('twitch-chat-panel');
+  const twitchChatIframe = document.getElementById('twitch-chat-iframe');
+  const twitchChatClose = document.getElementById('twitch-chat-close');
+  function setTwitchChat(open){
+    State.twitchChatVisible = !!open;
+    if(!twitchChatPanel || !twitchChatBtn) return;
+    if(open){
+      twitchChatPanel.classList.add('open');
+      twitchChatBtn.classList.add('active');
+      const lbl = document.getElementById('twitch-chat-btn-label');
+      if(lbl) lbl.textContent = 'Esconder Chat';
+      if(twitchChatIframe && (!twitchChatIframe.src || twitchChatIframe.src === 'about:blank' || twitchChatIframe.src.endsWith('about:blank'))){
+        twitchChatIframe.src = twitchChatUrl('daenil');
+      }
+    } else {
+      twitchChatPanel.classList.remove('open');
+      twitchChatBtn.classList.remove('active');
+      const lbl = document.getElementById('twitch-chat-btn-label');
+      if(lbl) lbl.textContent = 'Mostrar Chat';
+    }
+  }
+  if(twitchChatBtn){
+    twitchChatBtn.addEventListener('click', () => {
+      if(State.role === 'host') return;
+      setTwitchChat(!State.twitchChatVisible);
+    });
+  }
+  if(twitchChatClose){
+    twitchChatClose.addEventListener('click', () => setTwitchChat(false));
+  }
 
   const flyouts = {
     image: document.getElementById('flyout-image'),
