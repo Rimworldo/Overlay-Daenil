@@ -163,16 +163,7 @@ button{font-family:inherit;}
 /* ================= APP ROOT ================= */
 #app{position:fixed;inset:0;display:none;}
 #app.active{display:block;}
-#app-bg{position:absolute;inset:0;background:#0a0b0d;}
-body:not(.host-mode) #app-bg{background:#0a0b0d;}
-#stage{background:transparent;}
-body:not(.host-mode) #canvas-view{
-  background:rgba(0,0,0,0.35);
-}
-body:not(.host-mode) #stage-bounds{
-  background:transparent;
-  box-shadow:0 0 0 9999px #12151a;
-}
+#app-bg{position:absolute;inset:0;}
 #media-upload{
   position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:880;
   display:none;width:min(360px,calc(100vw - 32px));padding:10px 12px;
@@ -233,8 +224,18 @@ body.host-mode #canvas-view{transform:none !important;}
   pointer-events:none;
 }
 #live-embed.active{display:block;}
-#live-embed.unlocked{pointer-events:auto;}
-#live-embed iframe{width:100%;height:100%;border:0;display:block;pointer-events:inherit;}
+/* unlocked: sobe acima dos elementos para receber clique real no player (play, volume, config) */
+#live-embed.unlocked{
+  z-index:55;
+  pointer-events:auto !important;
+}
+#live-embed iframe{
+  width:100%;height:100%;border:0;display:block;
+  pointer-events:none;
+}
+#live-embed.unlocked iframe{
+  pointer-events:auto !important;
+}
 #elements-layer{z-index:10;}
 #draw-canvas{z-index:5;}
 #stage-bounds{z-index:40;}
@@ -5902,6 +5903,15 @@ const UI = (() => {
     const label = document.getElementById('live-lock-label');
     if(liveEmbed){
       liveEmbed.classList.toggle('unlocked', !locked);
+      // reforço inline: iframe precisa receber eventos quando liberado
+      try{
+        const iframe = liveEmbed.querySelector('iframe');
+        if(iframe){
+          iframe.style.pointerEvents = locked ? 'none' : 'auto';
+        }
+        liveEmbed.style.pointerEvents = locked ? 'none' : 'auto';
+        liveEmbed.style.zIndex = locked ? '1' : '55';
+      }catch(e){}
     }
     if(lock){
       lock.classList.toggle('unlocked', !locked);
